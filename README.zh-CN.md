@@ -108,11 +108,32 @@ docker compose logs -f
 
 ## 工作原理
 
-1. inotify 监听文件写入完成或移入事件，脚本按相对路径筛选文件。
-2. 符合规则的文件在等待上传延时和并发槽后，由 rclone 复制到目标。
-3. 上传失败的文件进入队列，后续有新文件上传成功时触发重试。
+```mermaid
+flowchart TD
+    Event(["文件写入完成或移入"]) --> Watch["inotify 捕捉事件"]
+    Watch --> Filters{"通过路径筛选？"}
+    Filters -->|否| Skip(["跳过文件"])
+    Filters -->|是| Wait["等待上传延时和并发槽"]
+    Wait --> Upload["rclone 复制文件"]
+    Upload -->|成功| Cloud[("云存储")]
+    Upload -->|失败| Queue[("失败队列")]
+    Cloud -.->|新文件上传成功| Retry["重新筛选队列文件"]
+    Queue -.->|读取队列| Retry
+    Retry -.->|重试符合规则的文件| Upload
 
-启动时跳过已有文件，本地文件始终保留。，文件路径进入容器内的队列，后续有新文件上传成功时会重试。队列保存在容器的 `/tmp`，重建容器会清空队列。监听依赖 Linux 文件系统的 inotify 事件，网络挂载或 Docker Desktop 的宿主机共享目录可能无法传递这些事件。文件名需避免换行。
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef decision fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef success fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef retry fill:#fef3c7,stroke:#d97706,color:#451a03
+    class Event,Watch,Wait,Upload input
+    class Filters decision
+    class Cloud success
+    class Queue,Retry retry
+```
+
+启动时跳过已有文件，本地文件始终保留。失败队列保存在容器的 `/tmp`，重建容器会清空队列。
+
+网络挂载或 Docker Desktop 的宿主机共享目录可能无法传递 inotify 事件。文件名需避免换行。
 
 ## 容器镜像
 

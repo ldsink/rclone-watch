@@ -108,11 +108,32 @@ End a destination that includes a path with `/`. The watcher appends the optiona
 
 ## How it works
 
-1. Inotify reports a completed write or a file move. The watcher applies the path filters.
-2. Eligible files wait for the configured delay and an available upload slot, then rclone copies them to the destination.
-3. Failed uploads enter the retry queue. A later successful upload triggers a retry.
+```mermaid
+flowchart TD
+    Event(["File write or move"]) --> Watch["inotify detects the event"]
+    Watch --> Filters{"Passes the path filters?"}
+    Filters -->|No| Skip(["Skip file"])
+    Filters -->|Yes| Wait["Wait for the delay and an upload slot"]
+    Wait --> Upload["rclone copies the file"]
+    Upload -->|Success| Cloud[("Cloud storage")]
+    Upload -->|Failure| Queue[("Retry queue")]
+    Cloud -.->|New upload succeeds| Retry["Recheck queued paths"]
+    Queue -.->|Read queue| Retry
+    Retry -.->|Retry eligible files| Upload
 
-Existing files are skipped at startup, and local files stay in place. into a queue and are retried after a later file uploads successfully. The queue lives in the container's `/tmp` and is cleared when the container is recreated. The watcher relies on Linux inotify events, which network mounts and Docker Desktop host shares may fail to propagate. Use filenames without newlines.
+    classDef input fill:#dbeafe,stroke:#2563eb,color:#172554
+    classDef decision fill:#ede9fe,stroke:#7c3aed,color:#2e1065
+    classDef success fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef retry fill:#fef3c7,stroke:#d97706,color:#451a03
+    class Event,Watch,Wait,Upload input
+    class Filters decision
+    class Cloud success
+    class Queue,Retry retry
+```
+
+Existing files are skipped at startup, and local files stay in place. The retry queue lives in the container’s `/tmp` and is cleared when the container is recreated.
+
+Network mounts and Docker Desktop host shares may fail to propagate inotify events. Use filenames without newlines.
 
 ## Container image
 
