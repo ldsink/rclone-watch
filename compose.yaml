@@ -3,6 +3,7 @@ services:
     image: ${RCLONE_WATCH_IMAGE:?Set RCLONE_WATCH_IMAGE to the GHCR image}
     init: true
     restart: unless-stopped
+    # Optional multiline WATCH_INCLUDE and WATCH_EXCLUDE rules also go in .env.
     env_file: .env
     environment:
       WATCH_DIR: /watch

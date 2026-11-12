@@ -27,6 +27,12 @@ RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 
+# Optional upload filters, one pattern per line.
+WATCH_INCLUDE='*.txt
+*.csv'
+WATCH_EXCLUDE='archive/*
+*.tmp.txt'
+
 # Upload scheduling: wait after each file event and cap concurrent uploads.
 UPLOAD_DELAY=5
 MAX_PARALLEL=5
@@ -52,6 +58,8 @@ Once the watcher is running, write a file to the host directory. For example, `/
 | `RCLONE_WATCH_IMAGE`            | Required by Compose                              | GHCR image to deploy, including its tag                                                                                                         |
 | `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-only in the container                                                                                     |
 | `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
+| `WATCH_INCLUDE`                 | Empty                                            | Upload only files matching at least one include pattern when configured                                                                         |
+| `WATCH_EXCLUDE`                 | Empty                                            | Skip files matching any exclude pattern                                                                                                         |
 | `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
 | `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
 | `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
@@ -59,6 +67,8 @@ Once the watcher is running, write a file to the host directory. For example, `/
 | `UPLOAD_DELAY`                  | `5`                                              | Seconds to wait after each file event before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default  |
 | `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
 | `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                       |
+
+Put one pattern per line in each variable. Empty lines are ignored. Patterns are case-sensitive Bash globs matched against paths relative to `WATCH_DIR`. The `*` wildcard also matches across directory separators, so `*.txt` matches files in subdirectories. When both variables are set, a file must match an include pattern and none of the exclude patterns. The same rules apply to queue retries and `DRY_RUN`.
 
 End a destination that includes a path with `/`. The watcher appends the optional `S3_PREFIX` and the relative file path directly to an rclone destination containing a colon. For example, `myremote:my-bucket/subfolder/` with `S3_PREFIX=backup` writes `report.txt` to `myremote:my-bucket/subfolder/backup/report.txt`. A remote root such as `myremote:` already has the required separator.
 

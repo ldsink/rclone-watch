@@ -21,6 +21,8 @@ S3_PREFIX="${S3_PREFIX:-}"
 UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
 DRY_RUN="${DRY_RUN:-false}"       # Test mode without real upload
 MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
+mapfile -t include_patterns <<<"${WATCH_INCLUDE:-}"
+mapfile -t exclude_patterns <<<"${WATCH_EXCLUDE:-}"
 
 # Check required environment variables
 if [ -z "$WATCH_DIR" ]; then
@@ -92,6 +94,25 @@ build_remote_path() {
     printf '%s%s%s\n' "$destination" "${S3_PREFIX:+${S3_PREFIX%/}/}" "$relative_path"
 }
 
+matches_watch_filters() {
+    local relative_path="${1#"${WATCH_DIR%/}"/}"
+    relative_path="${relative_path#/}"
+    local pattern
+    local has_include=false
+
+    for pattern in "${exclude_patterns[@]}"; do
+        [[ -n "$pattern" && "$relative_path" == $pattern ]] && return 1
+    done
+
+    for pattern in "${include_patterns[@]}"; do
+        [[ -n "$pattern" ]] || continue
+        has_include=true
+        [[ "$relative_path" == $pattern ]] && return 0
+    done
+
+    [[ "$has_include" == false ]]
+}
+
 # Function to add file to queue (thread-safe with flock)
 add_to_queue() {
     local filepath="$1"
@@ -125,6 +146,7 @@ process_queue() {
         while IFS= read -r filepath; do
             # Check if file still exists
             if [ -f "$filepath" ]; then
+                matches_watch_filters "$filepath" || continue
                 if upload_file "$filepath"; then
                     # Remove from queue only if upload succeeded
                     local temp_file="${QUEUE_FILE}.tmp"
@@ -193,7 +215,7 @@ fi
 inotifywait -m -r -e close_write,moved_to "$WATCH_DIR" --format '%w%f' |
     while IFS= read -r filepath; do
         # Check if it's a file (not directory)
-        if [ -f "$filepath" ]; then
+        if [ -f "$filepath" ] && matches_watch_filters "$filepath"; then
             # Wait a bit to make sure file is fully written
             if [ "$UPLOAD_DELAY" -gt 0 ]; then
                 sleep "$UPLOAD_DELAY"

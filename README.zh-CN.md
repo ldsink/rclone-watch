@@ -27,6 +27,12 @@ RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 
+# 可选的上传过滤规则，每行一条。
+WATCH_INCLUDE='*.txt
+*.csv'
+WATCH_EXCLUDE='archive/*
+*.tmp.txt'
+
 # Upload scheduling: wait after each file event and cap concurrent uploads.
 UPLOAD_DELAY=5
 MAX_PARALLEL=5
@@ -52,6 +58,8 @@ docker compose logs -f
 | `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要部署的 GHCR 镜像，包含标签                                                                                                |
 | `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
 | `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
+| `WATCH_INCLUDE`                 | 空                         | 设置后，只上传命中至少一条包含规则的文件                                                                                    |
+| `WATCH_EXCLUDE`                 | 空                         | 跳过命中任意一条排除规则的文件                                                                                              |
 | `RCLONE_REMOTE`                 | 上传模式必填               | 目标路径的起点，例如 `myremote:` 或 `myremote:my-bucket/subfolder/`。模拟模式下未设置或为空时使用 `cloud/`                  |
 | `RCLONE_CONFIG_<NAME>_TYPE`     | 通过环境变量定义远端时必填 | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
 | `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定                 | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
@@ -59,6 +67,8 @@ docker compose logs -f
 | `UPLOAD_DELAY`                  | `5`                        | 每个文件事件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                             |
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
+
+每个变量每行填写一条规则，空行忽略。规则使用区分大小写的 Bash 通配模式，匹配相对于 `WATCH_DIR` 的路径。`*` 可以跨目录分隔符，因此 `*.txt` 也能匹配子目录里的文件。两项同时设置时，文件必须命中至少一条包含规则，且未命中任何排除规则。失败重试和 `DRY_RUN` 也使用相同规则。
 
 指定目标目录时，路径应以 `/` 结尾。对于含冒号的 rclone 目标，脚本会直接拼接可选的 `S3_PREFIX` 和文件相对路径。例如，目标为 `myremote:my-bucket/subfolder/` 且设置 `S3_PREFIX=backup` 时，`report.txt` 会上传到 `myremote:my-bucket/subfolder/backup/report.txt`。远端根目录（如 `myremote:`）已有分隔符。
 
