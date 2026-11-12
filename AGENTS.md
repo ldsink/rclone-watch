@@ -14,10 +14,19 @@
 
 Git tags define the version and follow the `vMAJOR.MINOR.PATCH` format. Increment the major version for breaking changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes.
 
-Once the release workflow is on `main`, select a commit and publish a stable release in GitHub Releases, or run the following command from this repository to publish `v0.0.1`.
+1. Check the existing release tags and choose the next unused version. Update the image tag in the deployment examples and pull commands in both READMEs, and document any configuration changes included in the release.
+2. Run `make fmt`, commit the release changes, and push the intended release commit to `main`.
+3. From the checkout of that commit, publish a stable GitHub Release. Replace `vX.Y.Z` with the chosen version.
 
-```sh
-gh release create v0.0.1 --target main --title v0.0.1 --generate-notes
-```
+   ```sh
+   release_tag=vX.Y.Z
+   gh release create "$release_tag" --target "$(git rev-parse HEAD)" --title "$release_tag" --generate-notes
+   ```
 
-GitHub Actions builds and tests the image only when a stable release is published. After the tests pass, the workflow pushes the image under the matching Git tag and updates `latest`. Pin deployments to a published version tag.
+4. Wait for the **Container image** workflow to pass. It builds and tests the image before publishing the versioned tag and updating `latest` in GHCR.
+5. Verify that both GHCR tags resolve to the same digest. Pin deployments to the versioned tag.
+
+   ```sh
+   docker buildx imagetools inspect "ghcr.io/ldsink/rclone-watch:$release_tag"
+   docker buildx imagetools inspect ghcr.io/ldsink/rclone-watch:latest
+   ```
