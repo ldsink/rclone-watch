@@ -16,7 +16,7 @@
 - **Recursive watching** captures Linux inotify events when files are closed after writing or moved into the watched directory.
 - **Relative paths** preserve the watched directory structure at the destination.
 - **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
-- **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
+- **S3 storage** supports Amazon S3 and S3-compatible services through rclone.
 
 <a name="quick-start"></a>
 
@@ -121,9 +121,6 @@ WATCH_EXCLUDE='archive/*
 End a destination that includes a path with `/`. The watcher appends the optional `S3_PREFIX` and the relative file path directly to an rclone destination containing a colon. For example, `myremote:my-bucket/subfolder/` with `S3_PREFIX=backup` writes `report.txt` to `myremote:my-bucket/subfolder/backup/report.txt`. A remote root such as `myremote:` already has the required separator.
 
 `<NAME>` is the uppercase remote name before the colon in `RCLONE_REMOTE`. For example, `myremote` uses `RCLONE_CONFIG_MYREMOTE_*`. The bundled rclone also reads its own environment variables, such as `RCLONE_BWLIMIT` for bandwidth limits, `RCLONE_LOG_LEVEL` for logging, and `HTTPS_PROXY` for HTTPS requests. For the full set of options and backend-specific authentication settings, see the [rclone documentation](https://rclone.org/docs/#environment-variables).
-
-- Backblaze B2 uses `TYPE=b2` with backend options such as `ACCOUNT` and `KEY`.
-- Google Drive uses `TYPE=drive` with backend options such as `CLIENT_ID`, `CLIENT_SECRET`, and `TOKEN`. Use the same `RCLONE_CONFIG_<NAME>_` prefix for each option.
 
 <a name="how-it-works"></a>
 

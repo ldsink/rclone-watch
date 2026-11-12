@@ -16,7 +16,7 @@
 - **递归监听** — 在 Linux 上通过 inotify 捕捉文件写入完成和移入事件。
 - **保留目录结构** — 上传时保留文件相对于监听目录的路径。
 - **上传控制** — 支持上传延时、并发上限、失败重试和模拟运行。
-- **多种存储后端** — 通过 rclone 上传到 S3、Backblaze B2、Google Drive 等目标。
+- **S3 存储** — 通过 rclone 上传到 Amazon S3 和兼容 S3 的服务。
 
 <a name="快速开始"></a>
 
@@ -121,9 +121,6 @@ WATCH_EXCLUDE='archive/*
 指定目标目录时，路径应以 `/` 结尾。对于含冒号的 rclone 目标，脚本会直接拼接可选的 `S3_PREFIX` 和文件相对路径。例如，目标为 `myremote:my-bucket/subfolder/` 且设置 `S3_PREFIX=backup` 时，`report.txt` 会上传到 `myremote:my-bucket/subfolder/backup/report.txt`。远端根目录（如 `myremote:`）已有分隔符。
 
 `<NAME>` 是 `RCLONE_REMOTE` 冒号前的远端名转为大写，例如 `myremote` 对应 `RCLONE_CONFIG_MYREMOTE_*`。容器内的 rclone 也会读取自己的环境变量，例如限速用的 `RCLONE_BWLIMIT`、控制日志级别的 `RCLONE_LOG_LEVEL`，以及 HTTPS 请求使用的 `HTTPS_PROXY`。完整选项和各后端认证配置请查阅 [rclone 文档](https://rclone.org/docs/#environment-variables)。
-
-- Backblaze B2 使用 `TYPE=b2`，后端参数包括 `ACCOUNT` 和 `KEY`。
-- Google Drive 使用 `TYPE=drive`，后端参数包括 `CLIENT_ID`、`CLIENT_SECRET` 和 `TOKEN`。各参数均使用相同的 `RCLONE_CONFIG_<NAME>_` 前缀。
 
 <a name="工作原理"></a>
 
