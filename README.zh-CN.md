@@ -20,14 +20,14 @@
 
 ## 快速开始
 
-以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.1`，需要 `linux/amd64` 宿主机和 Docker Compose。使用该版本时，写入完成或移入监听目录的文件都会进入上传流程。需要按文件名或路径筛选时，请先看[文件过滤](#文件过滤)。
+以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.2`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
 ### 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.2
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -83,10 +83,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 ## 文件过滤
 
-> [!IMPORTANT]
-> 已发布的 `v0.0.1` 不支持 `WATCH_INCLUDE` 和 `WATCH_EXCLUDE`。需要使用过滤时，可从当前源码构建镜像。
-
-在克隆的仓库目录运行 `docker build -t rclone-watch:local .`。在部署用的 `.env` 中设置 `RCLONE_WATCH_IMAGE=rclone-watch:local`，添加下面的规则，再运行 `docker compose up -d`。
+从 `v0.0.2` 起，可将 `WATCH_INCLUDE` 和 `WATCH_EXCLUDE` 添加到部署用的 `.env`，再运行 `docker compose up -d` 应用规则。
 
 每个变量每行填写一条区分大小写的 Bash 通配规则，匹配相对于 `WATCH_DIR` 的路径。空行忽略，`*` 可以跨目录分隔符。设置 include 后，文件必须命中至少一条 include 规则。命中任意 exclude 规则的文件都会跳过。失败重试和 `DRY_RUN` 也使用相同规则。
 
@@ -139,7 +136,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-图中包含当前源码的文件过滤步骤。启动时跳过已有文件，本地文件始终保留。文件名请避免换行。
+启动时跳过已有文件，本地文件始终保留。文件名请避免换行。
 
 ## 故障排查
 
@@ -153,7 +150,7 @@ flowchart TD
 公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.1
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
 ```
 
 ## 许可证

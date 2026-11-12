@@ -20,14 +20,14 @@
 
 ## Quick start
 
-This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.1` image. You need a `linux/amd64` host with Docker Compose. This release attempts an upload for each file written or moved into the watched directory. For uploads limited by filename or path, see [File filters](#file-filters) before starting.
+This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.2` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
 
 ### 1. Configure the watched directory and Amazon S3
 
 Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.2
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -83,10 +83,7 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 
 ## File filters
 
-> [!IMPORTANT]
-> The published `v0.0.1` image predates `WATCH_INCLUDE` and `WATCH_EXCLUDE`. Build from the current source to use filters.
-
-From a clone of this repository, run `docker build -t rclone-watch:local .`. In the deployment `.env`, set `RCLONE_WATCH_IMAGE=rclone-watch:local`, add the rules below, and run `docker compose up -d`.
+Starting with `v0.0.2`, you can add `WATCH_INCLUDE` and `WATCH_EXCLUDE` to the deployment `.env`. Run `docker compose up -d` to apply the rules.
 
 Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`.
 
@@ -139,7 +136,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-The diagram includes the file filters in the current source. Existing files are skipped at startup, and local files stay in place. Use filenames without newlines.
+Existing files are skipped at startup, and local files stay in place. Use filenames without newlines.
 
 ## Troubleshooting
 
@@ -153,7 +150,7 @@ The diagram includes the file filters in the current source. Existing files are 
 The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See published tags](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch).
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.1
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
 ```
 
 ## License
