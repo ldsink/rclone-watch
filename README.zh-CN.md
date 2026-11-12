@@ -6,18 +6,6 @@
 
 本仓库交付基于 **Alpine Linux 3.23.8** 的 `linux/amd64` 容器镜像。镜像地址为 `ghcr.io/<owner>/<repo>`，仓库所有者和仓库名均为小写。首次发布后，可在 GitHub Packages 中将包设为公开以允许匿名拉取。私有包需要先登录 GHCR。
 
-## 发布版本
-
-Git 标签是版本来源，格式为 `vMAJOR.MINOR.PATCH`。按语义化版本管理，破坏兼容性时递增主版本，新增兼容功能时递增次版本，兼容的修复递增补丁版本。
-
-将发布流程合入 `main` 后，可在 GitHub Releases 中选择发布提交并创建正式 Release，也可以从本仓库运行以下命令发布 `v0.0.1`：
-
-```sh
-gh release create v0.0.1 --target main --title v0.0.1 --generate-notes
-```
-
-GitHub Actions 仅在正式 Release 发布后构建并测试镜像。测试通过后，工作流推送与 Git 标签同名的镜像，并更新 `latest`。部署时可固定到已发布的版本标签。
-
 ## Docker Compose 部署
 
 将 [compose.yaml](compose.yaml) 保存到部署目录，并在同一目录创建 `.env`。以下是 Amazon S3 示例，将镜像地址、宿主机目录、存储桶和凭据替换为实际值。宿主机目录需事先创建。

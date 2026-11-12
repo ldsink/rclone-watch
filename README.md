@@ -6,18 +6,6 @@ Watch a Linux directory recursively with inotify. When a file is closed after wr
 
 The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8**. The image is available at `ghcr.io/<owner>/<repo>` with a lowercase owner and repository name. After the first publication, you can make the package public in GitHub Packages to allow anonymous pulls. Private packages require signing in to GHCR.
 
-## Releases
-
-Git tags define the version and follow the `vMAJOR.MINOR.PATCH` format. Increment the major version for breaking changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes.
-
-Once the release workflow is on `main`, select a commit and publish a stable release in GitHub Releases, or run the following command from this repository to publish `v0.0.1`.
-
-```sh
-gh release create v0.0.1 --target main --title v0.0.1 --generate-notes
-```
-
-GitHub Actions builds and tests the image only when a stable release is published. After the tests pass, the workflow pushes the image under the matching Git tag and updates `latest`. Pin deployments to a published version tag.
-
 ## Deploy with Docker Compose
 
 Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the image address, host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
