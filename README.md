@@ -25,7 +25,7 @@ Save [compose.yaml](compose.yaml) to your deployment directory and create an `.e
 ```dotenv
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
 WATCH_PATH=/mnt/nas/uploads
-RCLONE_REMOTE=myremote:my-bucket
+RCLONE_REMOTE=myremote:my-bucket/
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -47,20 +47,24 @@ Once the watcher is running, write a file to the host directory. For example, `/
 
 ## Environment variables
 
-| Variable                        | Default                | Purpose                                                                                                                                         |
-| ------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RCLONE_WATCH_IMAGE`            | Required by Compose    | GHCR image to deploy, including its tag                                                                                                         |
-| `WATCH_PATH`                    | Required by Compose    | Host directory to watch, mounted read-only in the container                                                                                     |
-| `WATCH_DIR`                     | `/watch`               | Directory to watch in the container. Can be overridden when running the image directly                                                          |
-| `RCLONE_REMOTE`                 | Required for uploads   | Remote and destination path, such as `myremote:my-bucket/subfolder`                                                                             |
-| `RCLONE_CONFIG_<NAME>_TYPE`     | Depends on the remote  | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
-| `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
-| `S3_PREFIX`                     | Empty                  | Directory prefix appended to the destination path for any remote                                                                                |
-| `UPLOAD_DELAY`                  | `5`                    | Seconds to wait after each file event before scheduling an upload. Must be a non-negative integer                                               |
-| `MAX_PARALLEL`                  | `5`                    | Maximum concurrent uploads. Must be a positive integer                                                                                          |
-| `DRY_RUN`                       | `false`                | Set to `true` to log the intended upload paths only                                                                                             |
+`RCLONE_WATCH_IMAGE` and `WATCH_PATH` configure Compose. The service loads runtime settings from `.env` and explicitly sets `WATCH_DIR=/watch`, which takes precedence over any `WATCH_DIR` in `.env`. When running the image directly, pass runtime settings with `-e` or `--env-file`.
 
-`<NAME>` is the uppercase remote name before the colon in `RCLONE_REMOTE`. For example, `myremote` uses `RCLONE_CONFIG_MYREMOTE_*`. For backend-specific authentication and configuration, see the [rclone documentation](https://rclone.org/docs/#environment-variables).
+| Variable                        | Default                                          | Purpose                                                                                                                                         |
+| ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RCLONE_WATCH_IMAGE`            | Required by Compose                              | GHCR image to deploy, including its tag                                                                                                         |
+| `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-only in the container                                                                                     |
+| `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
+| `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
+| `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
+| `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
+| `S3_PREFIX`                     | Empty                                            | Optional relative directory prefix placed before the file path. Applies to any backend                                                          |
+| `UPLOAD_DELAY`                  | `5`                                              | Seconds to wait after each file event before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default  |
+| `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
+| `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                       |
+
+End a destination that includes a path with `/`. The watcher appends the optional `S3_PREFIX` and the relative file path directly to an rclone destination containing a colon. For example, `myremote:my-bucket/subfolder/` with `S3_PREFIX=backup` writes `report.txt` to `myremote:my-bucket/subfolder/backup/report.txt`. A remote root such as `myremote:` already has the required separator.
+
+`<NAME>` is the uppercase remote name before the colon in `RCLONE_REMOTE`. For example, `myremote` uses `RCLONE_CONFIG_MYREMOTE_*`. The bundled rclone also reads its own environment variables, such as `RCLONE_BWLIMIT` for bandwidth limits, `RCLONE_LOG_LEVEL` for logging, and `HTTPS_PROXY` for HTTPS requests. For the full set of options and backend-specific authentication settings, see the [rclone documentation](https://rclone.org/docs/#environment-variables).
 
 - Backblaze B2 uses `TYPE=b2` with backend options such as `ACCOUNT` and `KEY`.
 - Google Drive uses `TYPE=drive` with backend options such as `CLIENT_ID`, `CLIENT_SECRET`, and `TOKEN`. Use the same `RCLONE_CONFIG_<NAME>_` prefix for each option.

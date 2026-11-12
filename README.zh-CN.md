@@ -25,7 +25,7 @@ GitHub Actions 仅在正式 Release 发布后构建并测试镜像。测试通�
 ```dotenv
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
 WATCH_PATH=/mnt/nas/uploads
-RCLONE_REMOTE=myremote:my-bucket
+RCLONE_REMOTE=myremote:my-bucket/
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -47,20 +47,24 @@ docker compose logs -f
 
 ## 环境变量
 
-| 变量                            | 默认值          | 用途                                                                                                                        |
-| ------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `RCLONE_WATCH_IMAGE`            | 必填（Compose） | 要部署的 GHCR 镜像，包含标签                                                                                                |
-| `WATCH_PATH`                    | 必填（Compose） | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
-| `WATCH_DIR`                     | `/watch`        | 容器内监听目录，直接运行镜像时可覆盖                                                                                        |
-| `RCLONE_REMOTE`                 | 上传模式必填    | 远端及目标路径，例如 `myremote:my-bucket/subfolder`                                                                         |
-| `RCLONE_CONFIG_<NAME>_TYPE`     | 由远端决定      | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
-| `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定      | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
-| `S3_PREFIX`                     | 空              | 附加在目标路径下的目录前缀，适用于所有远端                                                                                  |
-| `UPLOAD_DELAY`                  | `5`             | 每个文件事件在安排上传前等待的秒数，非负整数                                                                                |
-| `MAX_PARALLEL`                  | `5`             | 并发上传任务上限，正整数                                                                                                    |
-| `DRY_RUN`                       | `false`         | 设为 `true` 仅记录预计上传路径                                                                                              |
+`RCLONE_WATCH_IMAGE` 和 `WATCH_PATH` 用于配置 Compose。服务从 `.env` 加载运行参数，并显式设置 `WATCH_DIR=/watch`，优先于 `.env` 中的同名变量。直接运行镜像时，可以通过 `-e` 或 `--env-file` 传入运行参数。
 
-`<NAME>` 是 `RCLONE_REMOTE` 冒号前的远端名转为大写，例如 `myremote` 对应 `RCLONE_CONFIG_MYREMOTE_*`。不同存储后端的认证和配置请查阅 [rclone 文档](https://rclone.org/docs/#environment-variables)。
+| 变量                            | 默认值                     | 用途                                                                                                                        |
+| ------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要部署的 GHCR 镜像，包含标签                                                                                                |
+| `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
+| `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
+| `RCLONE_REMOTE`                 | 上传模式必填               | 目标路径的起点，例如 `myremote:` 或 `myremote:my-bucket/subfolder/`。模拟模式下未设置或为空时使用 `cloud/`                  |
+| `RCLONE_CONFIG_<NAME>_TYPE`     | 通过环境变量定义远端时必填 | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
+| `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定                 | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
+| `S3_PREFIX`                     | 空                         | 可选的相对目录前缀，插在文件相对路径之前，适用于所有后端                                                                    |
+| `UPLOAD_DELAY`                  | `5`                        | 每个文件事件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                             |
+| `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
+| `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
+
+指定目标目录时，路径应以 `/` 结尾。对于含冒号的 rclone 目标，脚本会直接拼接可选的 `S3_PREFIX` 和文件相对路径。例如，目标为 `myremote:my-bucket/subfolder/` 且设置 `S3_PREFIX=backup` 时，`report.txt` 会上传到 `myremote:my-bucket/subfolder/backup/report.txt`。远端根目录（如 `myremote:`）已有分隔符。
+
+`<NAME>` 是 `RCLONE_REMOTE` 冒号前的远端名转为大写，例如 `myremote` 对应 `RCLONE_CONFIG_MYREMOTE_*`。容器内的 rclone 也会读取自己的环境变量，例如限速用的 `RCLONE_BWLIMIT`、控制日志级别的 `RCLONE_LOG_LEVEL`，以及 HTTPS 请求使用的 `HTTPS_PROXY`。完整选项和各后端认证配置请查阅 [rclone 文档](https://rclone.org/docs/#environment-variables)。
 
 - Backblaze B2 使用 `TYPE=b2`，后端参数包括 `ACCOUNT` 和 `KEY`。
 - Google Drive 使用 `TYPE=drive`，后端参数包括 `CLIENT_ID`、`CLIENT_SECRET` 和 `TOKEN`。各参数均使用相同的 `RCLONE_CONFIG_<NAME>_` 前缀。
