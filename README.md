@@ -1,24 +1,26 @@
 # rclone-watch
 
-用 inotify 递归监听 Linux 目录。文件写入关闭或移动到监听目录后，rclone 将文件复制到配置的目标，并保留相对目录结构。已有文件不会在启动时扫描，本地文件不会被删除。
+[简体中文](README.zh-CN.md)
 
-本仓库交付基于 **Alpine Linux 3.23.8** 的 `linux/amd64` 容器镜像。镜像地址为 `ghcr.io/<owner>/<repo>`，仓库所有者和仓库名均为小写。首次发布后，可在 GitHub Packages 中将包设为公开以允许匿名拉取。私有包需要先登录 GHCR。
+Watch a Linux directory recursively with inotify. When a file is closed after writing or moved into the watched directory, rclone copies it to the configured destination and preserves its relative path. The watcher skips existing files at startup and leaves local files in place.
 
-## 发布版本
+The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8**. The image is available at `ghcr.io/<owner>/<repo>` with a lowercase owner and repository name. After the first publication, you can make the package public in GitHub Packages to allow anonymous pulls. Private packages require signing in to GHCR.
 
-Git 标签是版本来源，格式为 `vMAJOR.MINOR.PATCH`。按语义化版本管理，破坏兼容性时递增主版本，新增兼容功能时递增次版本，兼容的修复递增补丁版本。
+## Releases
 
-将发布流程合入 `main` 后，可在 GitHub Releases 中选择发布提交并创建正式 Release，也可以从本仓库运行以下命令发布 `v0.0.1`：
+Git tags define the version and follow the `vMAJOR.MINOR.PATCH` format. Increment the major version for breaking changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes.
+
+Once the release workflow is on `main`, select a commit and publish a stable release in GitHub Releases, or run the following command from this repository to publish `v0.0.1`.
 
 ```sh
 gh release create v0.0.1 --target main --title v0.0.1 --generate-notes
 ```
 
-GitHub Actions 仅在正式 Release 发布后构建并测试镜像。测试通过后，工作流推送与 Git 标签同名的镜像，并更新 `latest`。部署时可固定到已发布的版本标签。
+GitHub Actions builds and tests the image only when a stable release is published. After the tests pass, the workflow pushes the image under the matching Git tag and updates `latest`. Pin deployments to a published version tag.
 
-## Docker Compose 部署
+## Deploy with Docker Compose
 
-将 [compose.yaml](compose.yaml) 保存到部署目录，并在同一目录创建 `.env`。以下是 Amazon S3 示例，将镜像地址、宿主机目录、存储桶和凭据替换为实际值。宿主机目录需事先创建。
+Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the image address, host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
 
 ```dotenv
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
@@ -41,30 +43,30 @@ docker compose up -d
 docker compose logs -f
 ```
 
-监听建立后，在宿主机目录中写入文件。例如 `/mnt/nas/uploads/2026/report.txt` 会上传到 `myremote:my-bucket/backup/2026/report.txt`。将 `DRY_RUN` 设为 `true` 可以只验证监听和目标路径，测试时可以省略远端配置。
+Once the watcher is running, write a file to the host directory. For example, `/mnt/nas/uploads/2026/report.txt` uploads to `myremote:my-bucket/backup/2026/report.txt`. Set `DRY_RUN=true` to verify file watching and destination paths. You can omit the remote configuration for this check.
 
-## 环境变量
+## Environment variables
 
-| 变量                            | 默认值          | 用途                                                                                                                        |
-| ------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `RCLONE_WATCH_IMAGE`            | 必填（Compose） | 要部署的 GHCR 镜像，包含标签                                                                                                |
-| `WATCH_PATH`                    | 必填（Compose） | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
-| `WATCH_DIR`                     | `/watch`        | 容器内监听目录，直接运行镜像时可覆盖                                                                                        |
-| `RCLONE_REMOTE`                 | 上传模式必填    | 远端及目标路径，例如 `myremote:my-bucket/subfolder`                                                                         |
-| `RCLONE_CONFIG_<NAME>_TYPE`     | 由远端决定      | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
-| `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定      | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
-| `S3_PREFIX`                     | 空              | 附加在目标路径下的目录前缀，适用于所有远端                                                                                  |
-| `UPLOAD_DELAY`                  | `5`             | 每个文件事件在安排上传前等待的秒数，非负整数                                                                                |
-| `MAX_PARALLEL`                  | `5`             | 并发上传任务上限，正整数                                                                                                    |
-| `DRY_RUN`                       | `false`         | 设为 `true` 仅记录预计上传路径                                                                                              |
+| Variable                        | Default                | Purpose                                                                                                                                         |
+| ------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RCLONE_WATCH_IMAGE`            | Required by Compose    | GHCR image to deploy, including its tag                                                                                                         |
+| `WATCH_PATH`                    | Required by Compose    | Host directory to watch, mounted read-only in the container                                                                                     |
+| `WATCH_DIR`                     | `/watch`               | Directory to watch in the container. Can be overridden when running the image directly                                                          |
+| `RCLONE_REMOTE`                 | Required for uploads   | Remote and destination path, such as `myremote:my-bucket/subfolder`                                                                             |
+| `RCLONE_CONFIG_<NAME>_TYPE`     | Depends on the remote  | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
+| `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
+| `S3_PREFIX`                     | Empty                  | Directory prefix appended to the destination path for any remote                                                                                |
+| `UPLOAD_DELAY`                  | `5`                    | Seconds to wait after each file event before scheduling an upload. Must be a non-negative integer                                               |
+| `MAX_PARALLEL`                  | `5`                    | Maximum concurrent uploads. Must be a positive integer                                                                                          |
+| `DRY_RUN`                       | `false`                | Set to `true` to log the intended upload paths only                                                                                             |
 
-`<NAME>` 是 `RCLONE_REMOTE` 冒号前的远端名转为大写，例如 `myremote` 对应 `RCLONE_CONFIG_MYREMOTE_*`。不同存储后端的认证和配置请查阅 [rclone 文档](https://rclone.org/docs/#environment-variables)。
+`<NAME>` is the uppercase remote name before the colon in `RCLONE_REMOTE`. For example, `myremote` uses `RCLONE_CONFIG_MYREMOTE_*`. For backend-specific authentication and configuration, see the [rclone documentation](https://rclone.org/docs/#environment-variables).
 
-- Backblaze B2 使用 `TYPE=b2`，后端参数包括 `ACCOUNT` 和 `KEY`。
-- Google Drive 使用 `TYPE=drive`，后端参数包括 `CLIENT_ID`、`CLIENT_SECRET` 和 `TOKEN`。各参数均使用相同的 `RCLONE_CONFIG_<NAME>_` 前缀。
+- Backblaze B2 uses `TYPE=b2` with backend options such as `ACCOUNT` and `KEY`.
+- Google Drive uses `TYPE=drive` with backend options such as `CLIENT_ID`, `CLIENT_SECRET`, and `TOKEN`. Use the same `RCLONE_CONFIG_<NAME>_` prefix for each option.
 
-上传失败时，文件路径进入容器内的队列，后续有新文件上传成功时会重试。队列保存在容器的 `/tmp`，重建容器会清空队列。监听依赖 Linux 文件系统的 inotify 事件，网络挂载或 Docker Desktop 的宿主机共享目录可能无法传递这些事件。文件名需避免换行。
+Failed uploads go into a queue and are retried after a later file uploads successfully. The queue lives in the container's `/tmp` and is cleared when the container is recreated. The watcher relies on Linux inotify events, which network mounts and Docker Desktop host shares may fail to propagate. Use filenames without newlines.
 
-## 许可证
+## License
 
-采用 [MIT 许可证](LICENSE)，监听脚本源自 [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch)。
+Released under the [MIT License](LICENSE). The watcher script originated in [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch).
