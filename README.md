@@ -21,7 +21,7 @@
 
 ### 1. Configure Docker Compose
 
-Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the image address, host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
+Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
 
 ```dotenv
 # Docker Compose: select the image version and the host directory to watch.
@@ -39,12 +39,6 @@ RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
-
-# Optional upload filters, one pattern per line.
-WATCH_INCLUDE='*.txt
-*.csv'
-WATCH_EXCLUDE='archive/*
-*.tmp.txt'
 
 # Upload scheduling: wait after each file event and cap concurrent uploads.
 UPLOAD_DELAY=5
@@ -87,7 +81,14 @@ Once the watcher is running, write a file to the host directory. For example, `/
 
 Put one pattern per line in each variable. Empty lines are ignored. Patterns are case-sensitive Bash globs matched against paths relative to `WATCH_DIR`. The `*` wildcard also matches across directory separators, so `*.txt` matches files in subdirectories. When both variables are set, a file must match an include pattern and none of the exclude patterns. The same rules apply to queue retries and `DRY_RUN`.
 
-The quick-start configuration produces these results.
+`v0.0.1` predates file filtering. With an image that supports file filters, add these settings to `.env`.
+
+```dotenv
+WATCH_INCLUDE='*.txt
+*.csv'
+WATCH_EXCLUDE='archive/*
+*.tmp.txt'
+```
 
 | Relative path        | Result                              |
 | -------------------- | ----------------------------------- |
@@ -137,7 +138,11 @@ Network mounts and Docker Desktop host shares may fail to propagate inotify even
 
 ## Container image
 
-The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8**. The image is available at `ghcr.io/<owner>/<repo>` with a lowercase owner and repository name. After the first publication, you can make the package public in GitHub Packages to allow anonymous pulls. Private packages require signing in to GHCR.
+The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See published tags](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch).
+
+```sh
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.1
+```
 
 ## License
 

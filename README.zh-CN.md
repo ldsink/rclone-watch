@@ -21,7 +21,7 @@
 
 ### 1. 配置 Docker Compose
 
-将 [compose.yaml](compose.yaml) 保存到部署目录，并在同一目录创建 `.env`。以下是 Amazon S3 示例，将镜像地址、宿主机目录、存储桶和凭据替换为实际值。宿主机目录需事先创建。
+将 [compose.yaml](compose.yaml) 保存到部署目录，并在同一目录创建 `.env`。以下是 Amazon S3 示例，将宿主机目录、存储桶和凭据替换为实际值。宿主机目录需事先创建。
 
 ```dotenv
 # 选择镜像版本和要监听的宿主机目录。
@@ -39,12 +39,6 @@ RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
-
-# 可选的上传过滤规则，每行一条。
-WATCH_INCLUDE='*.txt
-*.csv'
-WATCH_EXCLUDE='archive/*
-*.tmp.txt'
 
 # 设置上传延时和并发上限。
 UPLOAD_DELAY=5
@@ -87,7 +81,14 @@ docker compose logs -f
 
 每个变量每行填写一条规则，空行忽略。规则使用区分大小写的 Bash 通配模式，匹配相对于 `WATCH_DIR` 的路径。`*` 可以跨目录分隔符，因此 `*.txt` 也能匹配子目录里的文件。两项同时设置时，文件必须命中至少一条包含规则，且未命中任何排除规则。失败重试和 `DRY_RUN` 也使用相同规则。
 
-使用快速开始中的配置时，结果如下。
+`v0.0.1` 早于文件过滤功能。使用包含该功能的镜像时，将以下规则添加到 `.env`。
+
+```dotenv
+WATCH_INCLUDE='*.txt
+*.csv'
+WATCH_EXCLUDE='archive/*
+*.tmp.txt'
+```
 
 | 相对路径             | 结果                 |
 | -------------------- | -------------------- |
@@ -137,7 +138,11 @@ flowchart TD
 
 ## 容器镜像
 
-本仓库交付基于 **Alpine Linux 3.23.8** 的 `linux/amd64` 容器镜像。镜像地址为 `ghcr.io/<owner>/<repo>`，仓库所有者和仓库名均为小写。首次发布后，可在 GitHub Packages 中将包设为公开以允许匿名拉取。私有包需要先登录 GHCR。
+公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
+
+```sh
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.1
+```
 
 ## 许可证
 
