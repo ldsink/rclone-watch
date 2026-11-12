@@ -7,56 +7,60 @@
   <a href="#environment-variables">Configuration</a> ·
   <a href="#file-filters">File filters</a> ·
   <a href="#how-it-works">How it works</a> ·
+  <a href="#troubleshooting">Troubleshooting</a> ·
   <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 ## ✨ Features
 
 - **Recursive watching** captures Linux inotify events when files are closed after writing or moved into the watched directory.
-- **Path filtering** selects files by relative path and preserves the directory structure at the destination.
+- **Relative paths** preserve the watched directory structure at the destination.
 - **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
 - **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
 
 ## Quick start
 
-### 1. Configure Docker Compose
+This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.1` image. You need a `linux/amd64` host with Docker Compose. This release attempts an upload for each file written or moved into the watched directory. For uploads limited by filename or path, see [File filters](#file-filters) before starting.
 
-Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
+### 1. Configure the watched directory and Amazon S3
+
+Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
 ```dotenv
-# Docker Compose: select the image version and the host directory to watch.
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
 WATCH_PATH=/mnt/nas/uploads
 
-# Upload destination: MYREMOTE in the settings below matches myremote in RCLONE_REMOTE.
-# S3_PREFIX adds a directory under the bucket before the file's relative path.
 RCLONE_REMOTE=myremote:my-bucket/
 S3_PREFIX=backup
-
-# Amazon S3 remote: set the backend, AWS region, and credentials for myremote.
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
-
-# Upload scheduling: wait after each file event and cap concurrent uploads.
-UPLOAD_DELAY=5
-MAX_PARALLEL=5
-
-# Set to true to log planned uploads without sending files.
-DRY_RUN=false
 ```
 
-### 2. Start the watcher and follow the logs
+### 2. Start the watcher and upload a test file
+
+Run these commands from the directory containing `compose.yaml`.
 
 ```sh
-docker compose pull
 docker compose up -d
 docker compose logs -f
 ```
 
-Once the watcher is running, write a file to the host directory. For example, `/mnt/nas/uploads/2026/report.txt` uploads to `myremote:my-bucket/backup/2026/report.txt`. Set `DRY_RUN=true` to verify file watching and destination paths. You can omit the remote configuration for this check.
+Once the logs show `Watches established`, open another terminal on the host and write a new file. Adjust the path below to match `WATCH_PATH`.
+
+```sh
+printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +%s).txt"
+```
+
+The default delay before scheduling the upload is 5 seconds. When the logs show `Uploaded successfully`, look for the test file under `backup/` in the bucket. Subdirectories are preserved, so `2026/report.txt` goes to `myremote:my-bucket/backup/2026/report.txt`.
+
+### 3. Optional dry run
+
+To check the watcher and destination path first, add `DRY_RUN=true` to `.env` before starting, then write a test file as above. Look for `[DRY-RUN] Will be uploaded` in the logs. You can leave out credentials for a dry run. If you also omit `RCLONE_REMOTE`, the logged destination starts with `cloud/`.
+
+When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `docker compose up -d` again, and write a fresh test file.
 
 ## Environment variables
 
@@ -64,11 +68,11 @@ Once the watcher is running, write a file to the host directory. For example, `/
 
 | Variable                        | Default                                          | Purpose                                                                                                                                         |
 | ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RCLONE_WATCH_IMAGE`            | Required by Compose                              | GHCR image to deploy, including its tag                                                                                                         |
+| `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                |
 | `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-only in the container                                                                                     |
 | `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
-| `WATCH_INCLUDE`                 | Empty                                            | Upload only files matching at least one include pattern when configured                                                                         |
-| `WATCH_EXCLUDE`                 | Empty                                            | Skip files matching any exclude pattern                                                                                                         |
+| `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                           |
+| `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                      |
 | `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
 | `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
 | `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
@@ -79,9 +83,12 @@ Once the watcher is running, write a file to the host directory. For example, `/
 
 ## File filters
 
-Put one pattern per line in each variable. Empty lines are ignored. Patterns are case-sensitive Bash globs matched against paths relative to `WATCH_DIR`. The `*` wildcard also matches across directory separators, so `*.txt` matches files in subdirectories. When both variables are set, a file must match an include pattern and none of the exclude patterns. The same rules apply to queue retries and `DRY_RUN`.
+> [!IMPORTANT]
+> The published `v0.0.1` image predates `WATCH_INCLUDE` and `WATCH_EXCLUDE`. Build from the current source to use filters.
 
-`v0.0.1` predates file filtering. With an image that supports file filters, add these settings to `.env`.
+From a clone of this repository, run `docker build -t rclone-watch:local .`. In the deployment `.env`, set `RCLONE_WATCH_IMAGE=rclone-watch:local`, add the rules below, and run `docker compose up -d`.
+
+Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`.
 
 ```dotenv
 WATCH_INCLUDE='*.txt
@@ -132,9 +139,14 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-Existing files are skipped at startup, and local files stay in place. The retry queue lives in the container’s `/tmp` and is cleared when the container is recreated.
+The diagram includes the file filters in the current source. Existing files are skipped at startup, and local files stay in place. Use filenames without newlines.
 
-Network mounts and Docker Desktop host shares may fail to propagate inotify events. Use filenames without newlines.
+## Troubleshooting
+
+- **The container fails to start.** Check `docker compose logs --tail=100 rclone-watch`. Make sure `.env` is beside `compose.yaml` and the host directory in `WATCH_PATH` exists.
+- **Writing a file produces no log entry.** Wait for `Watches established`, write a new file on the host, and allow for `UPLOAD_DELAY`. If filters are enabled, check whether the relative path matches. Network mounts and Docker Desktop shares may fail to propagate inotify events. Test with a local Linux directory.
+- **The logs show `Upload failed`.** Check the rclone error, destination path, credentials, and write permissions. Inspect the queue with `docker compose exec rclone-watch cat /tmp/upload_queue.txt`. After fixing the error, write a new file. A successful upload triggers retries. Recreating the container clears the queue.
+- **You edited `.env`.** Run `docker compose up -d` to apply the settings, then verify with a new file.
 
 ## Container image
 
