@@ -1,0 +1,15 @@
+services:
+  rclone-watch:
+    image: ${RCLONE_WATCH_IMAGE:?Set RCLONE_WATCH_IMAGE to the GHCR image}
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WATCH_DIR: /watch
+    volumes:
+      - type: bind
+        source: ${WATCH_PATH:?Set WATCH_PATH to the host directory}
+        target: /watch
+        read_only: true
+        bind:
+          create_host_path: false
