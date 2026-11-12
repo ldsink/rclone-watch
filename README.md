@@ -33,18 +33,18 @@ docker compose logs -f
 
 ## 环境变量
 
-| 变量 | 默认值 | 用途 |
-| --- | --- | --- |
-| `RCLONE_WATCH_IMAGE` | 必填（Compose） | 要部署的 GHCR 镜像，包含标签 |
-| `WATCH_PATH` | 必填（Compose） | 宿主机监听目录，以只读方式挂载到容器 |
-| `WATCH_DIR` | `/watch` | 容器内监听目录，直接运行镜像时可覆盖 |
-| `RCLONE_REMOTE` | 上传模式必填 | 远端及目标路径，例如 `myremote:my-bucket/subfolder` |
-| `RCLONE_CONFIG_<NAME>_TYPE` | 由远端决定 | 远端类型，例如 `s3`、`b2` 或 `drive` |
-| `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定 | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
-| `S3_PREFIX` | 空 | 附加在目标路径下的目录前缀，适用于所有远端 |
-| `UPLOAD_DELAY` | `5` | 每个文件事件在安排上传前等待的秒数，非负整数 |
-| `MAX_PARALLEL` | `5` | 并发上传任务上限，正整数 |
-| `DRY_RUN` | `false` | 设为 `true` 仅记录预计上传路径 |
+| 变量                            | 默认值          | 用途                                                                                                                        |
+| ------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `RCLONE_WATCH_IMAGE`            | 必填（Compose） | 要部署的 GHCR 镜像，包含标签                                                                                                |
+| `WATCH_PATH`                    | 必填（Compose） | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
+| `WATCH_DIR`                     | `/watch`        | 容器内监听目录，直接运行镜像时可覆盖                                                                                        |
+| `RCLONE_REMOTE`                 | 上传模式必填    | 远端及目标路径，例如 `myremote:my-bucket/subfolder`                                                                         |
+| `RCLONE_CONFIG_<NAME>_TYPE`     | 由远端决定      | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
+| `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定      | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
+| `S3_PREFIX`                     | 空              | 附加在目标路径下的目录前缀，适用于所有远端                                                                                  |
+| `UPLOAD_DELAY`                  | `5`             | 每个文件事件在安排上传前等待的秒数，非负整数                                                                                |
+| `MAX_PARALLEL`                  | `5`             | 并发上传任务上限，正整数                                                                                                    |
+| `DRY_RUN`                       | `false`         | 设为 `true` 仅记录预计上传路径                                                                                              |
 
 `<NAME>` 是 `RCLONE_REMOTE` 冒号前的远端名转为大写，例如 `myremote` 对应 `RCLONE_CONFIG_MYREMOTE_*`。不同存储后端的认证和配置请查阅 [rclone 文档](https://rclone.org/docs/#environment-variables)。
 

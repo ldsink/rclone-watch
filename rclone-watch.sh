@@ -16,12 +16,11 @@ log_warn() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $1"
 }
 
-
 # Default settings (set early to use in checks)
 S3_PREFIX="${S3_PREFIX:-}"
-UPLOAD_DELAY="${UPLOAD_DELAY:-5}"  # Delay before upload in seconds
-DRY_RUN="${DRY_RUN:-false}"        # Test mode without real upload
-MAX_PARALLEL="${MAX_PARALLEL:-5}"  # Maximum parallel uploads
+UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
+DRY_RUN="${DRY_RUN:-false}"       # Test mode without real upload
+MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
 
 # Check required environment variables
 if [ -z "$WATCH_DIR" ]; then
@@ -99,7 +98,7 @@ add_to_queue() {
     (
         flock -x 200
         if ! grep -qxF "$filepath" "$QUEUE_FILE" 2>/dev/null; then
-            echo "$filepath" >> "$QUEUE_FILE"
+            echo "$filepath" >>"$QUEUE_FILE"
             log "File added to queue: $(basename "$filepath")"
         fi
     ) 200>"$QUEUE_LOCK"
@@ -111,7 +110,7 @@ remove_from_queue() {
     (
         flock -x 200
         local temp_file="${QUEUE_FILE}.tmp"
-        grep -vxF "$filepath" "$QUEUE_FILE" > "$temp_file" 2>/dev/null || true
+        grep -vxF "$filepath" "$QUEUE_FILE" >"$temp_file" 2>/dev/null || true
         mv "$temp_file" "$QUEUE_FILE"
     ) 200>"$QUEUE_LOCK"
 }
@@ -129,7 +128,7 @@ process_queue() {
                 if upload_file "$filepath"; then
                     # Remove from queue only if upload succeeded
                     local temp_file="${QUEUE_FILE}.tmp"
-                    grep -vxF "$filepath" "$QUEUE_FILE" > "$temp_file" 2>/dev/null || true
+                    grep -vxF "$filepath" "$QUEUE_FILE" >"$temp_file" 2>/dev/null || true
                     mv "$temp_file" "$QUEUE_FILE"
                     log "File from queue uploaded successfully: $(basename "$filepath")"
                 else
@@ -139,10 +138,10 @@ process_queue() {
             else
                 # File does not exist, remove from queue silently
                 local temp_file="${QUEUE_FILE}.tmp"
-                grep -vxF "$filepath" "$QUEUE_FILE" > "$temp_file" 2>/dev/null || true
+                grep -vxF "$filepath" "$QUEUE_FILE" >"$temp_file" 2>/dev/null || true
                 mv "$temp_file" "$QUEUE_FILE"
             fi
-        done < "$QUEUE_FILE"
+        done <"$QUEUE_FILE"
     ) 200>"$QUEUE_LOCK"
 }
 
@@ -192,18 +191,18 @@ fi
 
 # Monitor directory with inotifywait
 inotifywait -m -r -e close_write,moved_to "$WATCH_DIR" --format '%w%f' |
-while IFS= read -r filepath; do
-    # Check if it's a file (not directory)
-    if [ -f "$filepath" ]; then
-        # Wait a bit to make sure file is fully written
-        if [ "$UPLOAD_DELAY" -gt 0 ]; then
-            sleep "$UPLOAD_DELAY"
+    while IFS= read -r filepath; do
+        # Check if it's a file (not directory)
+        if [ -f "$filepath" ]; then
+            # Wait a bit to make sure file is fully written
+            if [ "$UPLOAD_DELAY" -gt 0 ]; then
+                sleep "$UPLOAD_DELAY"
+            fi
+
+            # Wait for available job slot before starting upload
+            wait_for_job_slot
+
+            # Upload to cloud in background with parallel control
+            upload_with_queue "$filepath" &
         fi
-
-        # Wait for available job slot before starting upload
-        wait_for_job_slot
-
-        # Upload to cloud in background with parallel control
-        upload_with_queue "$filepath" &
-    fi
-done
+    done
