@@ -1,26 +1,39 @@
-# rclone-watch
+<h1 align="center">📦 rclone-watch</h1>
 
-[English](README.md)
+<p align="center"><strong>文件写入完成后，自动通过 rclone 上传到云存储。</strong></p>
 
-用 inotify 递归监听 Linux 目录。文件写入关闭或移动到监听目录后，rclone 将文件复制到配置的目标，并保留相对目录结构。已有文件不会在启动时扫描，本地文件不会被删除。
+<p align="center">
+  <a href="#快速开始">快速开始</a> ·
+  <a href="#环境变量">配置</a> ·
+  <a href="#文件过滤">文件过滤</a> ·
+  <a href="#工作原理">工作原理</a> ·
+  <a href="README.md">English</a>
+</p>
 
-本仓库交付基于 **Alpine Linux 3.23.8** 的 `linux/amd64` 容器镜像。镜像地址为 `ghcr.io/<owner>/<repo>`，仓库所有者和仓库名均为小写。首次发布后，可在 GitHub Packages 中将包设为公开以允许匿名拉取。私有包需要先登录 GHCR。
+## ✨ 功能
 
-## Docker Compose 部署
+- **递归监听** — 在 Linux 上通过 inotify 捕捉文件写入完成和移入事件。
+- **按规则上传** — 按相对路径筛选文件，并在目标端保留目录结构。
+- **上传控制** — 支持上传延时、并发上限、失败重试和模拟运行。
+- **多种存储后端** — 通过 rclone 上传到 S3、Backblaze B2、Google Drive 等目标。
+
+## 快速开始
+
+### 1. 配置 Docker Compose
 
 将 [compose.yaml](compose.yaml) 保存到部署目录，并在同一目录创建 `.env`。以下是 Amazon S3 示例，将镜像地址、宿主机目录、存储桶和凭据替换为实际值。宿主机目录需事先创建。
 
 ```dotenv
-# Docker Compose: select the image version and the host directory to watch.
+# 选择镜像版本和要监听的宿主机目录。
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
 WATCH_PATH=/mnt/nas/uploads
 
-# Upload destination: MYREMOTE in the settings below matches myremote in RCLONE_REMOTE.
-# S3_PREFIX adds a directory under the bucket before the file's relative path.
+# 配置上传目标。下方变量中的 MYREMOTE 对应 RCLONE_REMOTE 中的 myremote。
+# S3_PREFIX 在文件的相对路径前加一层目录。
 RCLONE_REMOTE=myremote:my-bucket/
 S3_PREFIX=backup
 
-# Amazon S3 remote: set the backend, AWS region, and credentials for myremote.
+# 配置 myremote 的存储后端、AWS 区域和凭据。
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -33,13 +46,15 @@ WATCH_INCLUDE='*.txt
 WATCH_EXCLUDE='archive/*
 *.tmp.txt'
 
-# Upload scheduling: wait after each file event and cap concurrent uploads.
+# 设置上传延时和并发上限。
 UPLOAD_DELAY=5
 MAX_PARALLEL=5
 
-# Set to true to log planned uploads without sending files.
+# 设为 true 时，只记录计划上传的文件。
 DRY_RUN=false
 ```
+
+### 2. 启动并查看日志
 
 ```sh
 docker compose pull
@@ -68,7 +83,21 @@ docker compose logs -f
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
 
+## 文件过滤
+
 每个变量每行填写一条规则，空行忽略。规则使用区分大小写的 Bash 通配模式，匹配相对于 `WATCH_DIR` 的路径。`*` 可以跨目录分隔符，因此 `*.txt` 也能匹配子目录里的文件。两项同时设置时，文件必须命中至少一条包含规则，且未命中任何排除规则。失败重试和 `DRY_RUN` 也使用相同规则。
+
+使用快速开始中的配置时，结果如下。
+
+| 相对路径             | 结果                 |
+| -------------------- | -------------------- |
+| `2026/report.txt`    | 上传                 |
+| `2026/data.csv`      | 上传                 |
+| `archive/report.txt` | 命中目录排除规则     |
+| `report.tmp.txt`     | 命中临时文件排除规则 |
+| `photo.jpg`          | 未命中包含规则       |
+
+## 存储目标
 
 指定目标目录时，路径应以 `/` 结尾。对于含冒号的 rclone 目标，脚本会直接拼接可选的 `S3_PREFIX` 和文件相对路径。例如，目标为 `myremote:my-bucket/subfolder/` 且设置 `S3_PREFIX=backup` 时，`report.txt` 会上传到 `myremote:my-bucket/subfolder/backup/report.txt`。远端根目录（如 `myremote:`）已有分隔符。
 
@@ -77,7 +106,17 @@ docker compose logs -f
 - Backblaze B2 使用 `TYPE=b2`，后端参数包括 `ACCOUNT` 和 `KEY`。
 - Google Drive 使用 `TYPE=drive`，后端参数包括 `CLIENT_ID`、`CLIENT_SECRET` 和 `TOKEN`。各参数均使用相同的 `RCLONE_CONFIG_<NAME>_` 前缀。
 
-上传失败时，文件路径进入容器内的队列，后续有新文件上传成功时会重试。队列保存在容器的 `/tmp`，重建容器会清空队列。监听依赖 Linux 文件系统的 inotify 事件，网络挂载或 Docker Desktop 的宿主机共享目录可能无法传递这些事件。文件名需避免换行。
+## 工作原理
+
+1. inotify 监听文件写入完成或移入事件，脚本按相对路径筛选文件。
+2. 符合规则的文件在等待上传延时和并发槽后，由 rclone 复制到目标。
+3. 上传失败的文件进入队列，后续有新文件上传成功时触发重试。
+
+启动时跳过已有文件，本地文件始终保留。，文件路径进入容器内的队列，后续有新文件上传成功时会重试。队列保存在容器的 `/tmp`，重建容器会清空队列。监听依赖 Linux 文件系统的 inotify 事件，网络挂载或 Docker Desktop 的宿主机共享目录可能无法传递这些事件。文件名需避免换行。
+
+## 容器镜像
+
+本仓库交付基于 **Alpine Linux 3.23.8** 的 `linux/amd64` 容器镜像。镜像地址为 `ghcr.io/<owner>/<repo>`，仓库所有者和仓库名均为小写。首次发布后，可在 GitHub Packages 中将包设为公开以允许匿名拉取。私有包需要先登录 GHCR。
 
 ## 许可证
 

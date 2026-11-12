@@ -1,12 +1,25 @@
-# rclone-watch
+<h1 align="center">📦 rclone-watch</h1>
 
-[简体中文](README.zh-CN.md)
+<p align="center"><strong>Automatically upload files to cloud storage with rclone as they arrive.</strong></p>
 
-Watch a Linux directory recursively with inotify. When a file is closed after writing or moved into the watched directory, rclone copies it to the configured destination and preserves its relative path. The watcher skips existing files at startup and leaves local files in place.
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#environment-variables">Configuration</a> ·
+  <a href="#file-filters">File filters</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8**. The image is available at `ghcr.io/<owner>/<repo>` with a lowercase owner and repository name. After the first publication, you can make the package public in GitHub Packages to allow anonymous pulls. Private packages require signing in to GHCR.
+## ✨ Features
 
-## Deploy with Docker Compose
+- **Recursive watching** captures Linux inotify events when files are closed after writing or moved into the watched directory.
+- **Path filtering** selects files by relative path and preserves the directory structure at the destination.
+- **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
+- **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
+
+## Quick start
+
+### 1. Configure Docker Compose
 
 Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the image address, host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
 
@@ -41,6 +54,8 @@ MAX_PARALLEL=5
 DRY_RUN=false
 ```
 
+### 2. Start the watcher and follow the logs
+
 ```sh
 docker compose pull
 docker compose up -d
@@ -68,7 +83,21 @@ Once the watcher is running, write a file to the host directory. For example, `/
 | `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
 | `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                       |
 
+## File filters
+
 Put one pattern per line in each variable. Empty lines are ignored. Patterns are case-sensitive Bash globs matched against paths relative to `WATCH_DIR`. The `*` wildcard also matches across directory separators, so `*.txt` matches files in subdirectories. When both variables are set, a file must match an include pattern and none of the exclude patterns. The same rules apply to queue retries and `DRY_RUN`.
+
+The quick-start configuration produces these results.
+
+| Relative path        | Result                              |
+| -------------------- | ----------------------------------- |
+| `2026/report.txt`    | Upload                              |
+| `2026/data.csv`      | Upload                              |
+| `archive/report.txt` | Excluded by the directory rule      |
+| `report.tmp.txt`     | Excluded by the temporary-file rule |
+| `photo.jpg`          | Outside the include patterns        |
+
+## Storage destinations
 
 End a destination that includes a path with `/`. The watcher appends the optional `S3_PREFIX` and the relative file path directly to an rclone destination containing a colon. For example, `myremote:my-bucket/subfolder/` with `S3_PREFIX=backup` writes `report.txt` to `myremote:my-bucket/subfolder/backup/report.txt`. A remote root such as `myremote:` already has the required separator.
 
@@ -77,7 +106,17 @@ End a destination that includes a path with `/`. The watcher appends the optiona
 - Backblaze B2 uses `TYPE=b2` with backend options such as `ACCOUNT` and `KEY`.
 - Google Drive uses `TYPE=drive` with backend options such as `CLIENT_ID`, `CLIENT_SECRET`, and `TOKEN`. Use the same `RCLONE_CONFIG_<NAME>_` prefix for each option.
 
-Failed uploads go into a queue and are retried after a later file uploads successfully. The queue lives in the container's `/tmp` and is cleared when the container is recreated. The watcher relies on Linux inotify events, which network mounts and Docker Desktop host shares may fail to propagate. Use filenames without newlines.
+## How it works
+
+1. Inotify reports a completed write or a file move. The watcher applies the path filters.
+2. Eligible files wait for the configured delay and an available upload slot, then rclone copies them to the destination.
+3. Failed uploads enter the retry queue. A later successful upload triggers a retry.
+
+Existing files are skipped at startup, and local files stay in place. into a queue and are retried after a later file uploads successfully. The queue lives in the container's `/tmp` and is cleared when the container is recreated. The watcher relies on Linux inotify events, which network mounts and Docker Desktop host shares may fail to propagate. Use filenames without newlines.
+
+## Container image
+
+The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8**. The image is available at `ghcr.io/<owner>/<repo>` with a lowercase owner and repository name. After the first publication, you can make the package public in GitHub Packages to allow anonymous pulls. Private packages require signing in to GHCR.
 
 ## License
 
