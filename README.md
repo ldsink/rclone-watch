@@ -18,11 +18,15 @@
 - **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
 - **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
 
-## Quick start
+<a name="quick-start"></a>
+
+## 🚀 Quick start
 
 This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.2` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
 
-### 1. Configure the watched directory and Amazon S3
+<a name="1-configure-the-watched-directory-and-amazon-s3"></a>
+
+### 🧰 1. Configure the watched directory and Amazon S3
 
 Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
@@ -39,7 +43,9 @@ RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 ```
 
-### 2. Start the watcher and upload a test file
+<a name="2-start-the-watcher-and-upload-a-test-file"></a>
+
+### ▶️ 2. Start the watcher and upload a test file
 
 Run these commands from the directory containing `compose.yaml`.
 
@@ -56,13 +62,17 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 The default delay before scheduling the upload is 5 seconds. When the logs show `Uploaded successfully`, look for the test file under `backup/` in the bucket. Subdirectories are preserved, so `2026/report.txt` goes to `myremote:my-bucket/backup/2026/report.txt`.
 
-### 3. Optional dry run
+<a name="3-optional-dry-run"></a>
+
+### 🧪 3. Optional dry run
 
 To check the watcher and destination path first, add `DRY_RUN=true` to `.env` before starting, then write a test file as above. Look for `[DRY-RUN] Will be uploaded` in the logs. You can leave out credentials for a dry run. If you also omit `RCLONE_REMOTE`, the logged destination starts with `cloud/`.
 
 When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `docker compose up -d` again, and write a fresh test file.
 
-## Environment variables
+<a name="environment-variables"></a>
+
+## ⚙️ Environment variables
 
 `RCLONE_WATCH_IMAGE` and `WATCH_PATH` configure Compose. The service loads runtime settings from `.env` and explicitly sets `WATCH_DIR=/watch`, which takes precedence over any `WATCH_DIR` in `.env`. When running the image directly, pass runtime settings with `-e` or `--env-file`.
 
@@ -81,7 +91,9 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 | `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
 | `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                       |
 
-## File filters
+<a name="file-filters"></a>
+
+## 🎯 File filters
 
 Starting with `v0.0.2`, you can add `WATCH_INCLUDE` and `WATCH_EXCLUDE` to the deployment `.env`. Run `docker compose up -d` to apply the rules.
 
@@ -102,7 +114,9 @@ WATCH_EXCLUDE='archive/*
 | `report.tmp.txt`     | Excluded by the temporary-file rule |
 | `photo.jpg`          | Outside the include patterns        |
 
-## Storage destinations
+<a name="storage-destinations"></a>
+
+## ☁️ Storage destinations
 
 End a destination that includes a path with `/`. The watcher appends the optional `S3_PREFIX` and the relative file path directly to an rclone destination containing a colon. For example, `myremote:my-bucket/subfolder/` with `S3_PREFIX=backup` writes `report.txt` to `myremote:my-bucket/subfolder/backup/report.txt`. A remote root such as `myremote:` already has the required separator.
 
@@ -111,7 +125,9 @@ End a destination that includes a path with `/`. The watcher appends the optiona
 - Backblaze B2 uses `TYPE=b2` with backend options such as `ACCOUNT` and `KEY`.
 - Google Drive uses `TYPE=drive` with backend options such as `CLIENT_ID`, `CLIENT_SECRET`, and `TOKEN`. Use the same `RCLONE_CONFIG_<NAME>_` prefix for each option.
 
-## How it works
+<a name="how-it-works"></a>
+
+## 🔄 How it works
 
 ```mermaid
 flowchart TD
@@ -138,14 +154,18 @@ flowchart TD
 
 Existing files are skipped at startup, and local files stay in place. Use filenames without newlines.
 
-## Troubleshooting
+<a name="troubleshooting"></a>
+
+## 🛠️ Troubleshooting
 
 - **The container fails to start.** Check `docker compose logs --tail=100 rclone-watch`. Make sure `.env` is beside `compose.yaml` and the host directory in `WATCH_PATH` exists.
 - **Writing a file produces no log entry.** Wait for `Watches established`, write a new file on the host, and allow for `UPLOAD_DELAY`. If filters are enabled, check whether the relative path matches. Network mounts and Docker Desktop shares may fail to propagate inotify events. Test with a local Linux directory.
 - **The logs show `Upload failed`.** Check the rclone error, destination path, credentials, and write permissions. Inspect the queue with `docker compose exec rclone-watch cat /tmp/upload_queue.txt`. After fixing the error, write a new file. A successful upload triggers retries. Recreating the container clears the queue.
 - **You edited `.env`.** Run `docker compose up -d` to apply the settings, then verify with a new file.
 
-## Container image
+<a name="container-image"></a>
+
+## 🐳 Container image
 
 The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See published tags](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch).
 
@@ -153,6 +173,8 @@ The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See publ
 docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
 ```
 
-## License
+<a name="license"></a>
+
+## 📄 License
 
 Released under the [MIT License](LICENSE). The watcher script draws on [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch).

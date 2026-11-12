@@ -18,11 +18,15 @@
 - **上传控制** — 支持上传延时、并发上限、失败重试和模拟运行。
 - **多种存储后端** — 通过 rclone 上传到 S3、Backblaze B2、Google Drive 等目标。
 
-## 快速开始
+<a name="快速开始"></a>
+
+## 🚀 快速开始
 
 以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.2`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
-### 1. 配置监听目录和 Amazon S3
+<a name="1-配置监听目录和-amazon-s3"></a>
+
+### 🧰 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
@@ -39,7 +43,9 @@ RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 ```
 
-### 2. 启动并上传测试文件
+<a name="2-启动并上传测试文件"></a>
+
+### ▶️ 2. 启动并上传测试文件
 
 在 `compose.yaml` 所在目录运行以下命令。
 
@@ -56,13 +62,17 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 默认等待 5 秒后安排上传。看到 `Uploaded successfully` 后，在存储桶的 `backup/` 下检查测试文件。子目录结构也会保留，例如 `2026/report.txt` 对应 `myremote:my-bucket/backup/2026/report.txt`。
 
-### 3. 可选：先模拟运行
+<a name="3-可选先模拟运行"></a>
+
+### 🧪 3. 可选：先模拟运行
 
 如果只想验证监听和目标路径，在启动前将 `DRY_RUN=true` 加入 `.env`，然后按上一步写入测试文件。日志应出现 `[DRY-RUN] Will be uploaded`。模拟运行可以省略凭据，省略 `RCLONE_REMOTE` 时会用 `cloud/` 作为日志中的目标前缀。
 
 准备实际上传时，将 `DRY_RUN` 改为 `false`，补齐远端配置，重新运行 `docker compose up -d`，再写入一个新的测试文件。
 
-## 环境变量
+<a name="环境变量"></a>
+
+## ⚙️ 环境变量
 
 `RCLONE_WATCH_IMAGE` 和 `WATCH_PATH` 用于配置 Compose。服务从 `.env` 加载运行参数，并显式设置 `WATCH_DIR=/watch`，优先于 `.env` 中的同名变量。直接运行镜像时，可以通过 `-e` 或 `--env-file` 传入运行参数。
 
@@ -81,7 +91,9 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
 
-## 文件过滤
+<a name="文件过滤"></a>
+
+## 🎯 文件过滤
 
 从 `v0.0.2` 起，可将 `WATCH_INCLUDE` 和 `WATCH_EXCLUDE` 添加到部署用的 `.env`，再运行 `docker compose up -d` 应用规则。
 
@@ -102,7 +114,9 @@ WATCH_EXCLUDE='archive/*
 | `report.tmp.txt`     | 命中临时文件排除规则 |
 | `photo.jpg`          | 未命中包含规则       |
 
-## 存储目标
+<a name="存储目标"></a>
+
+## ☁️ 存储目标
 
 指定目标目录时，路径应以 `/` 结尾。对于含冒号的 rclone 目标，脚本会直接拼接可选的 `S3_PREFIX` 和文件相对路径。例如，目标为 `myremote:my-bucket/subfolder/` 且设置 `S3_PREFIX=backup` 时，`report.txt` 会上传到 `myremote:my-bucket/subfolder/backup/report.txt`。远端根目录（如 `myremote:`）已有分隔符。
 
@@ -111,7 +125,9 @@ WATCH_EXCLUDE='archive/*
 - Backblaze B2 使用 `TYPE=b2`，后端参数包括 `ACCOUNT` 和 `KEY`。
 - Google Drive 使用 `TYPE=drive`，后端参数包括 `CLIENT_ID`、`CLIENT_SECRET` 和 `TOKEN`。各参数均使用相同的 `RCLONE_CONFIG_<NAME>_` 前缀。
 
-## 工作原理
+<a name="工作原理"></a>
+
+## 🔄 工作原理
 
 ```mermaid
 flowchart TD
@@ -138,14 +154,18 @@ flowchart TD
 
 启动时跳过已有文件，本地文件始终保留。文件名请避免换行。
 
-## 故障排查
+<a name="故障排查"></a>
+
+## 🛠️ 故障排查
 
 - **容器启动失败。** 用 `docker compose logs --tail=100 rclone-watch` 查看报错，并检查 `.env` 是否与 `compose.yaml` 同目录、`WATCH_PATH` 指向的宿主机目录是否存在。
 - **写入文件后没有日志。** 等待 `Watches established` 后，从宿主机写入一个新文件，并留出 `UPLOAD_DELAY`。如果启用了过滤，检查文件的相对路径是否符合规则。网络挂载或 Docker Desktop 共享目录可能无法传递 inotify 事件，可以换到 Linux 本地目录验证。
 - **出现 `Upload failed`。** 查看日志中的 rclone 错误，检查目标路径、凭据和写入权限。用 `docker compose exec rclone-watch cat /tmp/upload_queue.txt` 查看失败队列。修复后写入一个新文件，上传成功后会触发重试。重建容器会清空队列。
 - **修改了 `.env`。** 运行 `docker compose up -d` 应用新配置，然后用新文件验证。
 
-## 容器镜像
+<a name="容器镜像"></a>
+
+## 🐳 容器镜像
 
 公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
 
@@ -153,6 +173,8 @@ flowchart TD
 docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
 ```
 
-## 许可证
+<a name="许可证"></a>
+
+## 📄 许可证
 
 采用 [MIT 许可证](LICENSE)。监听脚本参考了 [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch)。
