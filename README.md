@@ -24,9 +24,7 @@
 
 This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.2` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
 
-<a name="1-configure-the-watched-directory-and-amazon-s3"></a>
-
-### 🧰 1. Configure the watched directory and Amazon S3
+### 1. Configure the watched directory and Amazon S3
 
 Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
@@ -43,9 +41,7 @@ RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 ```
 
-<a name="2-start-the-watcher-and-upload-a-test-file"></a>
-
-### ▶️ 2. Start the watcher and upload a test file
+### 2. Start the watcher and upload a test file
 
 Run these commands from the directory containing `compose.yaml`.
 
@@ -62,9 +58,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 The default delay before scheduling the upload is 5 seconds. When the logs show `Uploaded successfully`, look for the test file under `backup/` in the bucket. Subdirectories are preserved, so `2026/report.txt` goes to `myremote:my-bucket/backup/2026/report.txt`.
 
-<a name="3-optional-dry-run"></a>
-
-### 🧪 3. Optional dry run
+### 3. Optional dry run
 
 To check the watcher and destination path first, add `DRY_RUN=true` to `.env` before starting, then write a test file as above. Look for `[DRY-RUN] Will be uploaded` in the logs. You can leave out credentials for a dry run. If you also omit `RCLONE_REMOTE`, the logged destination starts with `cloud/`.
 

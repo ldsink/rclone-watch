@@ -24,9 +24,7 @@
 
 以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.2`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
-<a name="1-配置监听目录和-amazon-s3"></a>
-
-### 🧰 1. 配置监听目录和 Amazon S3
+### 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
@@ -43,9 +41,7 @@ RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
 ```
 
-<a name="2-启动并上传测试文件"></a>
-
-### ▶️ 2. 启动并上传测试文件
+### 2. 启动并上传测试文件
 
 在 `compose.yaml` 所在目录运行以下命令。
 
@@ -62,9 +58,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 默认等待 5 秒后安排上传。看到 `Uploaded successfully` 后，在存储桶的 `backup/` 下检查测试文件。子目录结构也会保留，例如 `2026/report.txt` 对应 `myremote:my-bucket/backup/2026/report.txt`。
 
-<a name="3-可选先模拟运行"></a>
-
-### 🧪 3. 可选：先模拟运行
+### 3. 可选：先模拟运行
 
 如果只想验证监听和目标路径，在启动前将 `DRY_RUN=true` 加入 `.env`，然后按上一步写入测试文件。日志应出现 `[DRY-RUN] Will be uploaded`。模拟运行可以省略凭据，省略 `RCLONE_REMOTE` 时会用 `cloud/` 作为日志中的目标前缀。
 
