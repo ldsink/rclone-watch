@@ -23,17 +23,27 @@ GitHub Actions builds and tests the image only when a stable release is publishe
 Save [compose.yaml](compose.yaml) to your deployment directory and create an `.env` file beside it. In this Amazon S3 example, replace the image address, host directory, bucket, and credentials with your own values. Create the host directory before starting the container.
 
 ```dotenv
+# Docker Compose: select the image version and the host directory to watch.
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.1
 WATCH_PATH=/mnt/nas/uploads
+
+# Upload destination: MYREMOTE in the settings below matches myremote in RCLONE_REMOTE.
+# S3_PREFIX adds a directory under the bucket before the file's relative path.
 RCLONE_REMOTE=myremote:my-bucket/
+S3_PREFIX=backup
+
+# Amazon S3 remote: set the backend, AWS region, and credentials for myremote.
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
 RCLONE_CONFIG_MYREMOTE_SECRET_ACCESS_KEY=your-secret
 RCLONE_CONFIG_MYREMOTE_REGION=us-east-1
-S3_PREFIX=backup
+
+# Upload scheduling: wait after each file event and cap concurrent uploads.
 UPLOAD_DELAY=5
 MAX_PARALLEL=5
+
+# Set to true to log planned uploads without sending files.
 DRY_RUN=false
 ```
 
