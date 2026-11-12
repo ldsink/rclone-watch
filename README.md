@@ -16,7 +16,7 @@
 - **Recursive watching** captures Linux inotify events when files are closed after writing or moved into the watched directory.
 - **Relative paths** preserve the watched directory structure at the destination.
 - **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
-- **S3 storage** supports Amazon S3 and S3-compatible services through rclone.
+- **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
 
 <a name="quick-start"></a>
 
