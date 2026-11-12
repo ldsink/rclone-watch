@@ -120,4 +120,4 @@ docker compose logs -f
 
 ## 许可证
 
-采用 [MIT 许可证](LICENSE)，监听脚本源自 [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch)。
+采用 [MIT 许可证](LICENSE)。监听脚本参考了 [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch)。

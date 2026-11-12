@@ -120,4 +120,4 @@ The project ships a `linux/amd64` container image based on **Alpine Linux 3.23.8
 
 ## License
 
-Released under the [MIT License](LICENSE). The watcher script originated in [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch).
+Released under the [MIT License](LICENSE). The watcher script draws on [dx8ug/rclone-watch](https://github.com/dx8ug/rclone-watch).
