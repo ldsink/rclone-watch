@@ -31,32 +31,7 @@ jobs:
             --label "org.opencontainers.image.version=$GITHUB_REF_NAME" .
 
       - name: Test file watching and upload
-        run: |
-          watch_dir=$(mktemp -d)
-          mkdir "$watch_dir/nested"
-          trap 'docker logs rclone-watch-ci; docker rm -f rclone-watch-ci; rm -rf "$watch_dir"' EXIT
-          docker run --detach --init --name rclone-watch-ci \
-            --mount "type=bind,src=$watch_dir,dst=/watch,readonly" \
-            -e RCLONE_REMOTE=:local:/out -e S3_PREFIX=backup -e UPLOAD_DELAY=0 -e MAX_PARALLEL=1 \
-            -e WATCH_INCLUDE=$'*.txt\n*.csv' -e WATCH_EXCLUDE='*.tmp.txt' \
-            rclone-watch:ci
-
-          timeout 20 bash -c '
-            until docker logs rclone-watch-ci 2>&1 | grep -q "Watches established"; do
-              sleep 0.5
-            done
-          '
-          test "$(docker exec rclone-watch-ci cat /etc/alpine-release)" = 3.23.8
-          touch "$watch_dir/nested/excluded.tmp.txt" "$watch_dir/nested/unmatched.log"
-          printf '%s\n' 'test payload' > "$watch_dir/nested/file name.csv"
-          timeout 30 bash -c '
-            until docker exec rclone-watch-ci cmp -s \
-              "/watch/nested/file name.csv" "/out/backup/nested/file name.csv"; do
-              sleep 0.5
-            done
-          '
-          docker exec rclone-watch-ci test ! -e /out/backup/nested/excluded.tmp.txt
-          docker exec rclone-watch-ci test ! -e /out/backup/nested/unmatched.log
+        run: bash tests/watch-and-upload.sh
 
       - name: Test deletion after upload
         run: bash tests/delete-after-upload.sh
