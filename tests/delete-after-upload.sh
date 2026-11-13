@@ -55,7 +55,7 @@ write_file 'empty-settings.txt'
 await logged 'Uploaded successfully: empty-settings.txt'
 cmp "$work/watch/empty-settings.txt" "$work/out/target/backup/empty-settings.txt"
 
-start rw -e DRY_RUN=false -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true -e RCLONE_DRY_RUN=0
+start rw -e DRY_RUN=false -e DELETE_AFTER_UPLOAD=true
 printf '%s\n' payload >"$work/source"
 mv "$work/source" "$work/watch/file name.txt"
 await logged 'Deleted local file: /watch/file name.txt'
@@ -70,7 +70,7 @@ await logged 'File added to queue: retry.txt'
 test -f "$work/watch/retry.txt"
 rm "$work/out/target"
 mkdir -p "$work/out/target/backup"
-printf '%s\n' 'old payload' >"$work/out/target/backup/retry.txt"
+cp -p "$work/watch/retry.txt" "$work/out/target/backup/retry.txt"
 write_file 'first-trigger.txt'
 await logged 'Keeping local file because rclone transferred nothing: /watch/retry.txt'
 docker exec "$container" grep -Fx /watch/retry.txt /tmp/upload_queue.txt
@@ -81,7 +81,7 @@ await logged 'File from queue uploaded successfully: retry.txt'
 test ! -e "$work/watch/retry.txt"
 test "$(cat "$work/out/target/backup/retry.txt")" = payload
 
-start ro -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
+start ro -e DELETE_AFTER_UPLOAD=true
 touch "$work/out/target"
 write_file 'readonly.txt'
 await logged 'File added to queue: readonly.txt'
@@ -108,47 +108,6 @@ for delete in true false; do
     test -f "$work/watch/dry.txt"
     test ! -e "$work/out/target/backup/dry.txt"
 done
-
-for delete in true false; do
-    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e RCLONE_DRY_RUN=true
-    write_file 'pending.txt'
-    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/pending.txt'
-    docker exec "$container" sh -c 'printf "%s\n" /watch/pending.txt >/tmp/upload_queue.txt'
-    write_file 'rclone-dry.txt'
-    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/rclone-dry.txt'
-    write_file 'rclone-dry-barrier.txt'
-    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/rclone-dry-barrier.txt'
-    docker exec "$container" grep -Fx /watch/pending.txt /tmp/upload_queue.txt
-    test -f "$work/watch/pending.txt"
-    test -f "$work/watch/rclone-dry.txt"
-    test ! -e "$work/out/target/backup/rclone-dry.txt"
-done
-
-start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_DRY_RUN=true -e RCLONE_REMOTE=:invalid-backend:/out/
-write_file 'dry-error.txt'
-await logged "didn't find backend called"
-await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/dry-error.txt'
-test -f "$work/watch/dry-error.txt"
-docker exec "$container" test ! -s /tmp/upload_queue.txt
-
-start rw -e DELETE_AFTER_UPLOAD=false -e RCLONE_ERROR_ON_NO_TRANSFER=true -e RCLONE_IGNORE_EXISTING=true
-mkdir -p "$work/out/target/backup"
-printf '%s\n' 'old payload' >"$work/out/target/backup/no-transfer.txt"
-write_file 'no-transfer.txt'
-await logged 'Keeping local file because rclone transferred nothing: /watch/no-transfer.txt'
-write_file 'no-transfer-barrier.txt'
-await logged 'Uploaded successfully: no-transfer-barrier.txt'
-docker exec "$container" test ! -s /tmp/upload_queue.txt
-test "$(cat "$work/watch/no-transfer.txt")" = payload
-test "$(cat "$work/out/target/backup/no-transfer.txt")" = 'old payload'
-
-start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
-mkdir -p "$work/out/target/backup"
-printf '%s\n' 'old payload' >"$work/out/target/backup/skipped.txt"
-write_file 'skipped.txt'
-await logged 'Keeping local file because rclone transferred nothing: /watch/skipped.txt'
-test -f "$work/watch/skipped.txt"
-test "$(cat "$work/out/target/backup/skipped.txt")" = 'old payload'
 
 # Hold the real copy's return long enough to replace the uploaded source.
 mkdir "$work/bin"

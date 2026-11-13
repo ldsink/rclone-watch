@@ -10,6 +10,10 @@
 - The target uses shfmt for Bash and Prettier for Markdown and YAML. It requires Go and Node.js with npm.
 - Keep the environment variable documentation and Compose example in `README.md` and `README.zh-CN.md` aligned with the implementation.
 
+## Testing
+
+- Limit tests to `rclone-watch` features, documented settings, and behavior. Use dependencies to exercise those features and leave standalone dependency behavior to their own test suites.
+
 ## Releases
 
 Git tags define the version and follow the `vMAJOR.MINOR.PATCH` format. Increment the major version for breaking changes, the minor version for backward-compatible features, and the patch version for backward-compatible fixes.
