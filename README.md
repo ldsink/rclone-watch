@@ -33,8 +33,6 @@ RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.3
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
-S3_PREFIX=backup
-DELETE_AFTER_UPLOAD=false
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -57,7 +55,7 @@ Once the logs show `Watches established`, open another terminal on the host and 
 printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +%s).txt"
 ```
 
-The default delay before scheduling the upload is 5 seconds. When the logs show `Uploaded successfully`, look for the test file under `backup/` in the bucket. Subdirectories are preserved, so `2026/report.txt` goes to `myremote:my-bucket/backup/2026/report.txt`.
+The default delay before scheduling the upload is 5 seconds. When the logs show `Uploaded successfully`, look for the test file in the bucket. Subdirectories are preserved, so `2026/report.txt` goes to `myremote:my-bucket/2026/report.txt`.
 
 ### 3. Optional dry run
 

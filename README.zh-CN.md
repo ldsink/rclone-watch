@@ -33,8 +33,6 @@ RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.3
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
-S3_PREFIX=backup
-DELETE_AFTER_UPLOAD=false
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -57,7 +55,7 @@ docker compose logs -f
 printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +%s).txt"
 ```
 
-默认等待 5 秒后安排上传。看到 `Uploaded successfully` 后，在存储桶的 `backup/` 下检查测试文件。子目录结构也会保留，例如 `2026/report.txt` 对应 `myremote:my-bucket/backup/2026/report.txt`。
+默认等待 5 秒后安排上传。看到 `Uploaded successfully` 后，在存储桶中检查测试文件。子目录结构也会保留，例如 `2026/report.txt` 对应 `myremote:my-bucket/2026/report.txt`。
 
 ### 3. 可选：先模拟运行
 
