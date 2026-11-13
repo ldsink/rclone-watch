@@ -95,18 +95,19 @@ await logged 'Uploaded successfully: queue-barrier.txt'
 docker exec "$container" test ! -s /tmp/upload_queue.txt
 
 for delete in true false; do
-    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e DRY_RUN=true
+    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e DRY_RUN=true -e RCLONE_REMOTE=
     write_file 'pending.tmp'
     await logged 'Simulation completed for: pending.tmp'
     docker exec "$container" sh -c 'printf "%s\n" /watch/pending.tmp >/tmp/upload_queue.txt'
     write_file 'dry.txt'
+    await logged '[DRY-RUN] Will be uploaded: dry.txt -> cloud/backup/dry.txt'
     await logged 'Simulation completed for: dry.txt'
     write_file 'next-dry.txt'
     await logged 'Simulation completed for: next-dry.txt'
     docker exec "$container" grep -Fx /watch/pending.tmp /tmp/upload_queue.txt
     test -f "$work/watch/pending.tmp"
     test -f "$work/watch/dry.txt"
-    test ! -e "$work/out/target/backup/dry.txt"
+    test -z "$(ls -A "$work/out")"
 done
 
 # Hold the real copy's return long enough to replace the uploaded source.

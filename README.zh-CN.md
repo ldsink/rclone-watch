@@ -95,7 +95,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 
 从 `v0.0.2` 起，可将 `WATCH_INCLUDE` 和 `WATCH_EXCLUDE` 添加到部署用的 `.env`，再运行 `docker compose up -d` 应用规则。
 
-每个变量每行填写一条区分大小写的 Bash 通配规则，匹配相对于 `WATCH_DIR` 的路径。空行忽略，`*` 可以跨目录分隔符。设置 include 后，文件必须命中至少一条 include 规则。命中任意 exclude 规则的文件都会跳过。失败重试和 `DRY_RUN` 也使用相同规则。设置 `DRY_RUN=true` 时，监听器保留本地文件和失败队列。
+每个变量每行填写一条区分大小写的 Bash 通配规则，匹配相对于 `WATCH_DIR` 的路径。空行忽略，`*` 可以跨目录分隔符。设置 include 后，文件必须命中至少一条 include 规则。命中任意 exclude 规则的文件都会跳过。失败重试和 `DRY_RUN` 也使用相同规则。设置 `DRY_RUN=true` 时，无论 `DELETE_AFTER_UPLOAD` 取何值，监听器都会保留本地文件和失败队列。
 
 ```dotenv
 WATCH_INCLUDE='*.txt
@@ -156,7 +156,7 @@ flowchart TD
 - **容器启动失败。** 用 `docker compose logs --tail=100 rclone-watch` 查看报错，并检查 `.env` 是否与 `compose.yaml` 同目录、`WATCH_PATH` 指向的宿主机目录是否存在。
 - **写入文件后没有日志。** 等待 `Watches established` 后，从宿主机写入一个新文件，并留出 `UPLOAD_DELAY`。如果启用了过滤，检查文件的相对路径是否符合规则。网络挂载或 Docker Desktop 共享目录可能无法传递 inotify 事件，可以换到 Linux 本地目录验证。
 - **出现 `Upload failed`。** 查看日志中的 rclone 错误，检查目标路径、凭据和写入权限。用 `docker compose exec rclone-watch cat /tmp/upload_queue.txt` 查看失败队列。修复后写入一个新文件，上传成功后会触发重试。重建容器会清空队列。
-- **设置 `DELETE_AFTER_UPLOAD=true` 后源文件仍存在。** 查看日志，确认是否跳过传输、源文件是否变化，或校验、删除是否失败。校验需要读回目标对象，因此远端凭据需要读权限。删除需要源文件所在目录的写权限。请在文件写完后再交给监听器，并避免在上传和校验期间复用同一路径。
+- **设置 `DELETE_AFTER_UPLOAD=true` 后源文件仍存在。** 查看日志，确认是否跳过传输、源文件是否变化，或校验、删除是否失败。 如果目标文件已经是最新的，rclone 可能跳过传输，此时会保留本地文件。校验需要读回目标对象，因此远端凭据需要读权限。删除需要源文件所在目录的写权限。请在文件写完后再交给监听器，并避免在上传和校验期间复用同一路径。
 - **修改了 `.env`。** 运行 `docker compose up -d` 应用新配置，然后用新文件验证。
 
 <a name="容器镜像"></a>

@@ -95,7 +95,7 @@ Unset or empty boolean settings default to `false`. Other values must be `true` 
 
 Starting with `v0.0.2`, you can add `WATCH_INCLUDE` and `WATCH_EXCLUDE` to the deployment `.env`. Run `docker compose up -d` to apply the rules.
 
-Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`. With `DRY_RUN=true`, the watcher preserves local files and leaves the retry queue untouched.
+Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`. With `DRY_RUN=true`, the watcher preserves local files regardless of `DELETE_AFTER_UPLOAD` and leaves the retry queue untouched.
 
 ```dotenv
 WATCH_INCLUDE='*.txt
@@ -156,7 +156,7 @@ Existing files are skipped at startup. Local files stay in place by default. Use
 - **The container fails to start.** Check `docker compose logs --tail=100 rclone-watch`. Make sure `.env` is beside `compose.yaml` and the host directory in `WATCH_PATH` exists.
 - **Writing a file produces no log entry.** Wait for `Watches established`, write a new file on the host, and allow for `UPLOAD_DELAY`. If filters are enabled, check whether the relative path matches. Network mounts and Docker Desktop shares may fail to propagate inotify events. Test with a local Linux directory.
 - **The logs show `Upload failed`.** Check the rclone error, destination path, credentials, and write permissions. Inspect the queue with `docker compose exec rclone-watch cat /tmp/upload_queue.txt`. After fixing the error, write a new file. A successful upload triggers retries. Recreating the container clears the queue.
-- **The source stays in place with `DELETE_AFTER_UPLOAD=true`.** Check the logs for a skipped transfer, a changed source, or a verification or deletion failure. Verification reads back the destination object and needs remote read access. Deletion needs write access to the source directory. Finish writing files before handing them to the watcher and avoid reusing their paths during upload and verification.
+- **The source stays in place with `DELETE_AFTER_UPLOAD=true`.** Check the logs for a skipped transfer, a changed source, or a verification or deletion failure. An already up-to-date destination can cause rclone to skip the transfer, leaving the local file in place. Verification reads back the destination object and needs remote read access. Deletion needs write access to the source directory. Finish writing files before handing them to the watcher and avoid reusing their paths during upload and verification.
 - **You edited `.env`.** Run `docker compose up -d` to apply the settings, then verify with a new file.
 
 <a name="container-image"></a>
