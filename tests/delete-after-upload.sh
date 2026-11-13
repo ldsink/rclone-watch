@@ -47,10 +47,13 @@ write_file() {
 }
 
 start rw -e IGNORE_EXISTING_FILES=true
+# An event filename must never be interpreted as an inotify startup message.
+write_file $'multiline\nWatches established.'
 write_file 'default.txt'
 await logged 'Uploaded successfully: default.txt'
 cmp "$work/watch/default.txt" "$work/out/target/backup/default.txt"
 test ! -e "$work/out/target/backup/existing.txt"
+test "$(docker logs "$container" 2>&1 | grep -cFx 'Watches established.')" -eq 1
 
 start rw -e DRY_RUN= -e DELETE_AFTER_UPLOAD= -e IGNORE_EXISTING_FILES=
 await logged 'Uploaded successfully: existing.txt'

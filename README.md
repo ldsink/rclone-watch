@@ -148,7 +148,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-Starting with `v0.0.4`, the watcher scans the directory and its subdirectories at every startup by default and processes existing files with the same filters and upload settings as file events. To keep the previous behavior, add `IGNORE_EXISTING_FILES=true` to `.env`. With `DELETE_AFTER_UPLOAD=true`, existing files are also eligible for deletion after a verified upload. Local files stay in place by default. Use filenames without newlines.
+Starting with `v0.0.4`, the watcher scans the directory and its subdirectories at every startup by default and processes existing files with the same filters and upload settings as file events. To keep the previous behavior, add `IGNORE_EXISTING_FILES=true` to `.env`. With `DELETE_AFTER_UPLOAD=true`, existing files are also eligible for deletion after a verified upload. Local files stay in place by default. Files with newlines in their paths are skipped.
 
 <a name="troubleshooting"></a>
 

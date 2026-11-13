@@ -290,11 +290,12 @@ schedule_upload() {
         sleep "$UPLOAD_DELAY"
     fi
     wait_for_job_slot
+    [[ -f "$filepath" ]] || return 0
     upload_with_queue "$filepath" &
 }
 
 # Start watching before scanning so changes during the scan are queued by inotify.
-LC_ALL=C inotifywait -m -r -e close_write,moved_to "$WATCH_DIR" --format 'file:%w%f' 2>&1 |
+LC_ALL=C inotifywait -m -r -e close_write,moved_to --exclude $'\n' --format 'file:%w%f' "$WATCH_DIR" 2>&1 |
     while IFS= read -r line; do
         case "$line" in
         'Watches established.')

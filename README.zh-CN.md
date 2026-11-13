@@ -148,7 +148,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-从 `v0.0.4` 起，监听器默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。文件名请避免换行。
+从 `v0.0.4` 起，监听器默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。路径含换行符的文件会被跳过。
 
 <a name="故障排查"></a>
 
