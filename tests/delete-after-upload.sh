@@ -81,28 +81,66 @@ await logged 'File from queue uploaded successfully: retry.txt'
 test ! -e "$work/watch/retry.txt"
 test "$(cat "$work/out/target/backup/retry.txt")" = payload
 
-start ro -e DELETE_AFTER_UPLOAD=true
+start ro -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
+touch "$work/out/target"
+write_file 'readonly.txt'
+await logged 'File added to queue: readonly.txt'
+rm "$work/out/target"
+# Rewriting the queued file uploads it directly. The read-only bind keeps it present.
 write_file 'readonly.txt'
 await logged 'Upload succeeded but local deletion failed: /watch/readonly.txt'
 cmp "$work/watch/readonly.txt" "$work/out/target/backup/readonly.txt"
+write_file 'queue-barrier.txt'
+await logged 'Uploaded successfully: queue-barrier.txt'
+docker exec "$container" test ! -s /tmp/upload_queue.txt
 
-start rw -e DELETE_AFTER_UPLOAD=true -e DRY_RUN=true
-write_file 'pending.tmp'
-await logged 'Simulation completed for: pending.tmp'
-docker exec "$container" sh -c 'printf "%s\n" /watch/pending.tmp >/tmp/upload_queue.txt'
-write_file 'dry.txt'
-await logged 'Simulation completed for: dry.txt'
-write_file 'next-dry.txt'
-await logged 'Simulation completed for: next-dry.txt'
-docker exec "$container" grep -Fx /watch/pending.tmp /tmp/upload_queue.txt
-test -f "$work/watch/dry.txt"
-test ! -e "$work/out/target/backup/dry.txt"
+for delete in true false; do
+    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e DRY_RUN=true
+    write_file 'pending.tmp'
+    await logged 'Simulation completed for: pending.tmp'
+    docker exec "$container" sh -c 'printf "%s\n" /watch/pending.tmp >/tmp/upload_queue.txt'
+    write_file 'dry.txt'
+    await logged 'Simulation completed for: dry.txt'
+    write_file 'next-dry.txt'
+    await logged 'Simulation completed for: next-dry.txt'
+    docker exec "$container" grep -Fx /watch/pending.tmp /tmp/upload_queue.txt
+    test -f "$work/watch/pending.tmp"
+    test -f "$work/watch/dry.txt"
+    test ! -e "$work/out/target/backup/dry.txt"
+done
 
-start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_DRY_RUN=true
-write_file 'rclone-dry.txt'
-await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/rclone-dry.txt'
-test -f "$work/watch/rclone-dry.txt"
-test ! -e "$work/out/target/backup/rclone-dry.txt"
+for delete in true false; do
+    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e RCLONE_DRY_RUN=true
+    write_file 'pending.txt'
+    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/pending.txt'
+    docker exec "$container" sh -c 'printf "%s\n" /watch/pending.txt >/tmp/upload_queue.txt'
+    write_file 'rclone-dry.txt'
+    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/rclone-dry.txt'
+    write_file 'rclone-dry-barrier.txt'
+    await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/rclone-dry-barrier.txt'
+    docker exec "$container" grep -Fx /watch/pending.txt /tmp/upload_queue.txt
+    test -f "$work/watch/pending.txt"
+    test -f "$work/watch/rclone-dry.txt"
+    test ! -e "$work/out/target/backup/rclone-dry.txt"
+done
+
+start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_DRY_RUN=true -e RCLONE_REMOTE=:invalid-backend:/out/
+write_file 'dry-error.txt'
+await logged "didn't find backend called"
+await logged 'Keeping local file because RCLONE_DRY_RUN is set: /watch/dry-error.txt'
+test -f "$work/watch/dry-error.txt"
+docker exec "$container" test ! -s /tmp/upload_queue.txt
+
+start rw -e DELETE_AFTER_UPLOAD=false -e RCLONE_ERROR_ON_NO_TRANSFER=true -e RCLONE_IGNORE_EXISTING=true
+mkdir -p "$work/out/target/backup"
+printf '%s\n' 'old payload' >"$work/out/target/backup/no-transfer.txt"
+write_file 'no-transfer.txt'
+await logged 'Keeping local file because rclone transferred nothing: /watch/no-transfer.txt'
+write_file 'no-transfer-barrier.txt'
+await logged 'Uploaded successfully: no-transfer-barrier.txt'
+docker exec "$container" test ! -s /tmp/upload_queue.txt
+test "$(cat "$work/watch/no-transfer.txt")" = payload
+test "$(cat "$work/out/target/backup/no-transfer.txt")" = 'old payload'
 
 start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
 mkdir -p "$work/out/target/backup"

@@ -232,19 +232,21 @@ upload_file() {
 
     rclone copyto "${copy_flags[@]}" "$filepath" "$remote_path"
     local status=$?
-    if [[ "$status" == 9 && "$DELETE_AFTER_UPLOAD" == true ]]; then
+    case "${RCLONE_DRY_RUN:-false}" in
+    0 | f | F | false | False | FALSE) ;;
+    1 | t | T | true | True | TRUE)
+        log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
+        return 9
+        ;;
+    *)
+        log_error "Invalid RCLONE_DRY_RUN value: $RCLONE_DRY_RUN"
+        return 1
+        ;;
+    esac
+    [[ "$status" == 0 || "$status" == 9 ]] || return 1
+    if [[ "$status" == 9 ]]; then
         log_warn "Keeping local file because rclone transferred nothing: $filepath"
         return 9
-    fi
-    [[ "$status" == 0 ]] || return 1
-    if [[ "$DELETE_AFTER_UPLOAD" == true ]]; then
-        case "${RCLONE_DRY_RUN:-false}" in
-        0 | f | F | false | False | FALSE) ;;
-        *)
-            log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
-            return 9
-            ;;
-        esac
     fi
 
     log "Uploaded successfully: $filename"
@@ -262,7 +264,9 @@ upload_with_queue() {
     upload_file "$filepath"
     local status=$?
     if [[ "$status" == 0 ]]; then
-        # If upload successful, try to process queue
+        if [ -s "$QUEUE_FILE" ]; then
+            remove_from_queue "$filepath"
+        fi
         process_queue
     elif [[ "$status" != 9 ]]; then
         # If upload failed, add to queue
