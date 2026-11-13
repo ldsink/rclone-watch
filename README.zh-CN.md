@@ -18,6 +18,14 @@
 - **上传控制** — 支持上传延时、并发上限、失败重试和模拟运行。
 - **多种存储后端** — 通过 rclone 上传到 S3、Backblaze B2、Google Drive 等目标。
 
+## 上传后删除
+
+使用支持此设置的镜像，在 `.env` 中设置 `DELETE_AFTER_UPLOAD=true`，然后运行 `docker compose up -d`。Compose 示例使用读写挂载，容器需要有权删除宿主机监听目录中的文件。
+
+rclone 完成传输后，监听器会读回目标对象，核对 SHA-256 摘要，再删除源文件。远端凭据需要读权限，校验也会消耗下载带宽。模拟运行、跳过传输、上传失败或校验失败时均保留源文件。失败队列重试也遵循相同规则。如果删除失败，日志会记录 `Upload succeeded but local deletion failed`，本次传输仍视为成功。
+
+请在文件写完后再交给监听器，并避免在上传期间复用同一路径。最后一次源文件检查和删除是两个独立操作。
+
 <a name="快速开始"></a>
 
 ## 🚀 快速开始
@@ -34,6 +42,7 @@ WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
 S3_PREFIX=backup
+DELETE_AFTER_UPLOAD=false
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
 RCLONE_CONFIG_MYREMOTE_PROVIDER=AWS
 RCLONE_CONFIG_MYREMOTE_ACCESS_KEY_ID=your-key
@@ -73,7 +82,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | 变量                            | 默认值                     | 用途                                                                                                                        |
 | ------------------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要运行的镜像及标签，可使用 GHCR 镜像或本地构建的镜像                                                                        |
-| `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以只读方式挂载到容器                                                                                        |
+| `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以读写方式挂载到容器                                                                                        |
 | `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
 | `WATCH_INCLUDE`                 | 空                         | 设置后，文件需命中至少一条包含规则。参见[文件过滤](#文件过滤)                                                               |
 | `WATCH_EXCLUDE`                 | 空                         | 跳过命中任意排除规则的文件。参见[文件过滤](#文件过滤)                                                                       |
@@ -84,6 +93,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `UPLOAD_DELAY`                  | `5`                        | 每个文件事件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                             |
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
+| `DELETE_AFTER_UPLOAD`           | `false`                    | 接受 `true` 或 `false`，留空使用默认值。参见[上传后删除](#上传后删除)。                                                     |
 
 <a name="文件过滤"></a>
 

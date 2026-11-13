@@ -58,6 +58,9 @@ jobs:
           docker exec rclone-watch-ci test ! -e /out/backup/nested/excluded.tmp.txt
           docker exec rclone-watch-ci test ! -e /out/backup/nested/unmatched.log
 
+      - name: Test deletion after upload
+        run: bash tests/delete-after-upload.sh
+
       - name: Publish to GHCR
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -11,6 +11,5 @@ services:
       - type: bind
         source: ${WATCH_PATH:?Set WATCH_PATH to the host directory}
         target: /watch
-        read_only: true
         bind:
           create_host_path: false

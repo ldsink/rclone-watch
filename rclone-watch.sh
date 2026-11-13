@@ -20,6 +20,7 @@ log_warn() {
 S3_PREFIX="${S3_PREFIX:-}"
 UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
 DRY_RUN="${DRY_RUN:-false}"       # Test mode without real upload
+DELETE_AFTER_UPLOAD="${DELETE_AFTER_UPLOAD:-false}"
 MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
 mapfile -t include_patterns <<<"${WATCH_INCLUDE:-}"
 mapfile -t exclude_patterns <<<"${WATCH_EXCLUDE:-}"
@@ -46,6 +47,11 @@ fi
 
 if ! [[ "$UPLOAD_DELAY" =~ ^(0|[1-9][0-9]*)$ && "$MAX_PARALLEL" =~ ^[1-9][0-9]*$ ]]; then
     log_error "UPLOAD_DELAY must be a nonnegative integer and MAX_PARALLEL a positive integer"
+    exit 1
+fi
+
+if [[ "$DELETE_AFTER_UPLOAD" != true && "$DELETE_AFTER_UPLOAD" != false ]]; then
+    log_error "DELETE_AFTER_UPLOAD must be true or false"
     exit 1
 fi
 
@@ -167,6 +173,28 @@ process_queue() {
     ) 200>"$QUEUE_LOCK"
 }
 
+delete_uploaded_file() {
+    local filepath="$1" remote_path="$2" source_state="$3"
+    local filename="${filepath##*/}"
+    local local_hash remote_hash
+
+    [[ -e "$filepath" || -L "$filepath" ]] || return 0
+    if [[ -z "$source_state" || "$source_state" != "$(stat -c '%d:%i:%s:%y:%z' -- "$filepath")" ]]; then
+        log_warn "Keeping local file because the source changed or could not be checked: $filepath"
+    # Require an exact object match even when rclone settings can skip transfers.
+    elif ! local_hash=$(sha256sum <"$filepath") ||
+        ! remote_hash=$(printf '%s\n' "$filename" | rclone hashsum SHA-256 --download --no-traverse --files-from-raw - "${remote_path%"$filename"}") ||
+        [[ "$remote_hash" != "${local_hash%% *}  $filename" ]]; then
+        log_warn "Keeping local file because remote contents could not be verified: $filepath"
+    elif [[ "$source_state" != "$(stat -c '%d:%i:%s:%y:%z' -- "$filepath")" ]]; then
+        log_warn "Keeping local file because the source changed during verification: $filepath"
+    elif rm -f -- "$filepath"; then
+        log "Deleted local file: $filepath"
+    else
+        log_warn "Upload succeeded but local deletion failed: $filepath"
+    fi
+}
+
 # Core upload function (performs actual upload)
 upload_file() {
     local filepath="$1"
@@ -182,13 +210,32 @@ upload_file() {
         return 0
     fi
 
-    # Upload file to cloud using rclone
-    if rclone copyto "$filepath" "$remote_path"; then
-        log "Uploaded successfully: $filename"
-        return 0
-    else
-        return 1
+    local source_state
+    local -a copy_flags=()
+    if [[ "$DELETE_AFTER_UPLOAD" == true ]]; then
+        copy_flags+=(--error-on-no-transfer)
+        if [[ -f "$filepath" && ! -L "$filepath" ]]; then
+            source_state=$(stat -c '%d:%i:%s:%y:%z' -- "$filepath")
+        fi
     fi
+
+    rclone copyto "${copy_flags[@]}" "$filepath" "$remote_path"
+    local status=$?
+    if [[ "$status" == 9 && "$DELETE_AFTER_UPLOAD" == true ]]; then
+        log_warn "Keeping local file because rclone transferred nothing: $filepath"
+        return 0
+    fi
+    [[ "$status" == 0 ]] || return 1
+    if [[ "$DELETE_AFTER_UPLOAD" == true && "${RCLONE_DRY_RUN:-false}" != false ]]; then
+        log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
+        return 0
+    fi
+
+    log "Uploaded successfully: $filename"
+    if [[ "$DELETE_AFTER_UPLOAD" == true ]]; then
+        delete_uploaded_file "$filepath" "$remote_path" "$source_state"
+    fi
+    return 0
 }
 
 # Main upload handler with queue logic
