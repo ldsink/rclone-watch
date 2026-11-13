@@ -282,16 +282,33 @@ if [ "$DRY_RUN" = "true" ]; then
     log_warn "[DRY-RUN] Skipping cloud connection check"
 fi
 
+declare -A startup_file_states startup_upload_pids
+
 schedule_upload() {
-    local filepath="$1"
+    local filepath="$1" source="${2:-event}" state
     [[ -f "$filepath" ]] && matches_watch_filters "$filepath" || return 0
+
+    if [[ "$source" == event && -n "${startup_file_states[$filepath]:-}" ]]; then
+        state=$(stat -Lc '%d:%i:%s:%y:%z' -- "$filepath" 2>/dev/null)
+        [[ "$state" == "${startup_file_states[$filepath]}" ]] && return 0
+        # Keep a newer upload from racing the startup upload of the same path.
+        wait "${startup_upload_pids[$filepath]}"
+        unset 'startup_file_states[$filepath]' 'startup_upload_pids[$filepath]'
+    fi
 
     if [ "$UPLOAD_DELAY" -gt 0 ]; then
         sleep "$UPLOAD_DELAY"
     fi
     wait_for_job_slot
     [[ -f "$filepath" ]] || return 0
+    if [[ "$source" == startup ]]; then
+        state=$(stat -Lc '%d:%i:%s:%y:%z' -- "$filepath" 2>/dev/null)
+        startup_file_states[$filepath]="$state"
+    fi
     upload_with_queue "$filepath" &
+    if [[ "$source" == startup ]]; then
+        startup_upload_pids[$filepath]=$!
+    fi
 }
 
 # Start watching before scanning so changes during the scan are queued by inotify.
@@ -301,9 +318,13 @@ LC_ALL=C inotifywait -m -r -e close_write,moved_to --exclude $'\n' --format 'fil
         'Watches established.')
             printf '%s\n' "$line" >&2
             if [[ "$UPLOAD_EXISTING_FILES" == true ]]; then
+                exec {scan_fd}< <(find "${WATCH_DIR%/}/" -type f -print0)
+                scan_pid=$!
                 while IFS= read -r -d '' filepath; do
-                    [[ "$filepath" != *$'\n'* ]] && schedule_upload "$filepath"
-                done < <(find "${WATCH_DIR%/}/" -type f -print0)
+                    [[ "$filepath" != *$'\n'* ]] && schedule_upload "$filepath" startup
+                done <&"$scan_fd"
+                exec {scan_fd}<&-
+                wait "$scan_pid" || log_error "Startup scan failed for $WATCH_DIR"
             fi
             ;;
         file:*) schedule_upload "${line#file:}" ;;
