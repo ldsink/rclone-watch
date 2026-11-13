@@ -22,15 +22,16 @@
 
 ## 🚀 快速开始
 
-以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.3`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
+以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.4`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
 ### 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.3
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.4
 WATCH_PATH=/mnt/nas/uploads
+# IGNORE_EXISTING_FILES=true
 
 RCLONE_REMOTE=myremote:my-bucket/
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
@@ -147,7 +148,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-启动扫描功能尚未发布。启用该功能的版本默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。文件名请避免换行。
+从 `v0.0.4` 起，监听器默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。文件名请避免换行。
 
 <a name="故障排查"></a>
 
@@ -166,7 +167,7 @@ flowchart TD
 公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.3
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.4
 ```
 
 <a name="许可证"></a>
