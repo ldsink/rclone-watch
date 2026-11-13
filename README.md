@@ -95,7 +95,7 @@ Unset or empty boolean settings default to `false`. Other values must be `true` 
 
 Starting with `v0.0.2`, you can add `WATCH_INCLUDE` and `WATCH_EXCLUDE` to the deployment `.env`. Run `docker compose up -d` to apply the rules.
 
-Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`.
+Use one case-sensitive Bash glob per line. Rules match paths relative to `WATCH_DIR`, empty lines are ignored, and `*` can span directory separators. If include rules are set, a file must match at least one. Any exclude match skips the file. The same rules apply to retries and `DRY_RUN`. Dry runs leave the retry queue untouched.
 
 ```dotenv
 WATCH_INCLUDE='*.txt

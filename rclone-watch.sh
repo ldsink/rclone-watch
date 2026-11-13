@@ -218,7 +218,7 @@ upload_file() {
         local filesize=$(du -h "$filepath" | cut -f1)
         log_warn "[DRY-RUN] File size: $filesize"
         log_warn "[DRY-RUN] Simulation completed for: $filename"
-        return 0
+        return 9
     fi
 
     local source_state

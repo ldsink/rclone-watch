@@ -87,8 +87,14 @@ await logged 'Upload succeeded but local deletion failed: /watch/readonly.txt'
 cmp "$work/watch/readonly.txt" "$work/out/target/backup/readonly.txt"
 
 start rw -e DELETE_AFTER_UPLOAD=true -e DRY_RUN=true
+write_file 'pending.tmp'
+await logged 'Simulation completed for: pending.tmp'
+docker exec "$container" sh -c 'printf "%s\n" /watch/pending.tmp >/tmp/upload_queue.txt'
 write_file 'dry.txt'
 await logged 'Simulation completed for: dry.txt'
+write_file 'next-dry.txt'
+await logged 'Simulation completed for: next-dry.txt'
+docker exec "$container" grep -Fx /watch/pending.tmp /tmp/upload_queue.txt
 test -f "$work/watch/dry.txt"
 test ! -e "$work/out/target/backup/dry.txt"
 
