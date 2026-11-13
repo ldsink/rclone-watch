@@ -153,13 +153,15 @@ process_queue() {
             # Check if file still exists
             if [ -f "$filepath" ]; then
                 matches_watch_filters "$filepath" || continue
-                if upload_file "$filepath"; then
+                upload_file "$filepath"
+                local status=$?
+                if [[ "$status" == 0 ]]; then
                     # Remove from queue only if upload succeeded
                     local temp_file="${QUEUE_FILE}.tmp"
                     grep -vxF "$filepath" "$QUEUE_FILE" >"$temp_file" 2>/dev/null || true
                     mv "$temp_file" "$QUEUE_FILE"
                     log "File from queue uploaded successfully: $(basename "$filepath")"
-                else
+                elif [[ "$status" != 9 ]]; then
                     # Stop processing queue if upload failed
                     break
                 fi
@@ -223,12 +225,12 @@ upload_file() {
     local status=$?
     if [[ "$status" == 9 && "$DELETE_AFTER_UPLOAD" == true ]]; then
         log_warn "Keeping local file because rclone transferred nothing: $filepath"
-        return 0
+        return 9
     fi
     [[ "$status" == 0 ]] || return 1
     if [[ "$DELETE_AFTER_UPLOAD" == true && "${RCLONE_DRY_RUN:-false}" != false ]]; then
         log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
-        return 0
+        return 9
     fi
 
     log "Uploaded successfully: $filename"
@@ -243,10 +245,12 @@ upload_with_queue() {
     local filepath="$1"
 
     # Try to upload file
-    if upload_file "$filepath"; then
+    upload_file "$filepath"
+    local status=$?
+    if [[ "$status" == 0 ]]; then
         # If upload successful, try to process queue
         process_queue
-    else
+    elif [[ "$status" != 9 ]]; then
         # If upload failed, add to queue
         log_error "Upload failed: $(basename "$filepath")"
         add_to_queue "$filepath"

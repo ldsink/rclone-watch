@@ -145,7 +145,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-启动时跳过已有文件，本地文件始终保留。文件名请避免换行。
+启动时跳过已有文件，默认保留本地文件。文件名请避免换行。
 
 <a name="故障排查"></a>
 
@@ -154,6 +154,7 @@ flowchart TD
 - **容器启动失败。** 用 `docker compose logs --tail=100 rclone-watch` 查看报错，并检查 `.env` 是否与 `compose.yaml` 同目录、`WATCH_PATH` 指向的宿主机目录是否存在。
 - **写入文件后没有日志。** 等待 `Watches established` 后，从宿主机写入一个新文件，并留出 `UPLOAD_DELAY`。如果启用了过滤，检查文件的相对路径是否符合规则。网络挂载或 Docker Desktop 共享目录可能无法传递 inotify 事件，可以换到 Linux 本地目录验证。
 - **出现 `Upload failed`。** 查看日志中的 rclone 错误，检查目标路径、凭据和写入权限。用 `docker compose exec rclone-watch cat /tmp/upload_queue.txt` 查看失败队列。修复后写入一个新文件，上传成功后会触发重试。重建容器会清空队列。
+- **设置 `DELETE_AFTER_UPLOAD=true` 后源文件仍存在。** 查看日志，确认是否跳过传输、源文件是否变化，或校验、删除是否失败。校验需要读回目标对象，因此远端凭据需要读权限。删除需要源文件所在目录的写权限。请在文件写完后再交给监听器，并避免在上传和校验期间复用同一路径。
 - **修改了 `.env`。** 运行 `docker compose up -d` 应用新配置，然后用新文件验证。
 
 <a name="容器镜像"></a>

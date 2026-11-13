@@ -45,12 +45,12 @@ write_file() {
     printf '%s\n' payload >"$work/watch/$1"
 }
 
-start ro
+start rw
 write_file 'default.txt'
 await logged 'Uploaded successfully: default.txt'
 cmp "$work/watch/default.txt" "$work/out/target/backup/default.txt"
 
-start rw -e DELETE_AFTER_UPLOAD=true
+start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
 printf '%s\n' payload >"$work/source"
 mv "$work/source" "$work/watch/file name.txt"
 await logged 'Deleted local file: /watch/file name.txt'
@@ -64,6 +64,13 @@ write_file 'retry.txt'
 await logged 'File added to queue: retry.txt'
 test -f "$work/watch/retry.txt"
 rm "$work/out/target"
+mkdir -p "$work/out/target/backup"
+printf '%s\n' 'old payload' >"$work/out/target/backup/retry.txt"
+write_file 'first-trigger.txt'
+await logged 'Keeping local file because rclone transferred nothing: /watch/retry.txt'
+docker exec "$container" grep -Fx /watch/retry.txt /tmp/upload_queue.txt
+test "$(cat "$work/watch/retry.txt")" = payload
+rm "$work/out/target/backup/retry.txt"
 write_file 'trigger.txt'
 await logged 'File from queue uploaded successfully: retry.txt'
 test ! -e "$work/watch/retry.txt"
