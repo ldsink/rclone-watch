@@ -22,14 +22,14 @@
 
 ## 🚀 Quick start
 
-This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.2` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
+This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.3` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
 
 ### 1. Configure the watched directory and Amazon S3
 
 Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.2
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.3
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -166,7 +166,7 @@ Existing files are skipped at startup. Local files stay in place by default. Use
 The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See published tags](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch).
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.3
 ```
 
 <a name="license"></a>

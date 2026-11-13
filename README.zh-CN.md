@@ -22,14 +22,14 @@
 
 ## 🚀 快速开始
 
-以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.2`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
+以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.3`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
 ### 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.2
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.3
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -166,7 +166,7 @@ flowchart TD
 公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.2
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.3
 ```
 
 <a name="许可证"></a>
