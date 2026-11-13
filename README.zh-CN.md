@@ -74,13 +74,14 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要运行的镜像及标签，可使用 GHCR 镜像或本地构建的镜像                                                                        |
 | `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以读写方式挂载到容器                                                                                        |
 | `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
+| `IGNORE_EXISTING_FILES`         | `false`                    | 接受 `true` 或 `false`。设为 `true` 时跳过启动时已有的文件。                                                                |
 | `WATCH_INCLUDE`                 | 空                         | 设置后，文件需命中至少一条包含规则。参见[文件过滤](#文件过滤)                                                               |
 | `WATCH_EXCLUDE`                 | 空                         | 跳过命中任意排除规则的文件。参见[文件过滤](#文件过滤)                                                                       |
 | `RCLONE_REMOTE`                 | 上传模式必填               | 目标路径的起点，例如 `myremote:` 或 `myremote:my-bucket/subfolder/`。模拟模式下未设置或为空时使用 `cloud/`                  |
 | `RCLONE_CONFIG_<NAME>_TYPE`     | 通过环境变量定义远端时必填 | 远端类型，例如 `s3`、`b2` 或 `drive`                                                                                        |
 | `RCLONE_CONFIG_<NAME>_<OPTION>` | 由后端决定                 | 后端配置，例如 S3 的 `PROVIDER`、`ENV_AUTH`、`ACCESS_KEY_ID`、`SECRET_ACCESS_KEY`、`REGION` 和兼容 S3 服务常用的 `ENDPOINT` |
 | `S3_PREFIX`                     | 空                         | 可选的相对目录前缀，插在文件相对路径之前，适用于所有后端                                                                    |
-| `UPLOAD_DELAY`                  | `5`                        | 每个文件事件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                             |
+| `UPLOAD_DELAY`                  | `5`                        | 每个文件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                                 |
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 接受 `true` 或 `false`。设为 `true` 时记录目标路径和文件大小，不调用 rclone。                                               |
 | `DELETE_AFTER_UPLOAD`           | `false`                    | 自 `v0.0.3` 起支持。接受 `true` 或 `false`。设为 `true` 时，上传并校验成功后删除未变化的本地文件。                          |
@@ -125,6 +126,7 @@ WATCH_EXCLUDE='archive/*
 ```mermaid
 flowchart TD
     Event(["文件写入完成或移入"]) --> Watch["inotify 捕捉事件"]
+    Startup(["启动扫描（IGNORE_EXISTING_FILES 为 true 时跳过）"]) --> Filters
     Watch --> Filters{"通过路径筛选？"}
     Filters -->|否| Skip(["跳过文件"])
     Filters -->|是| Wait["等待上传延时和并发槽"]
@@ -145,7 +147,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-启动时跳过已有文件，默认保留本地文件。文件名请避免换行。
+启动扫描功能尚未发布。启用该功能的版本默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。文件名请避免换行。
 
 <a name="故障排查"></a>
 

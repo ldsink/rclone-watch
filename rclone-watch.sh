@@ -32,12 +32,14 @@ S3_PREFIX="${S3_PREFIX:-}"
 UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
 DRY_RUN="${DRY_RUN:-false}"       # Test mode without real upload
 DELETE_AFTER_UPLOAD="${DELETE_AFTER_UPLOAD:-false}"
+IGNORE_EXISTING_FILES="${IGNORE_EXISTING_FILES:-false}"
 MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
 mapfile -t include_patterns <<<"${WATCH_INCLUDE:-}"
 mapfile -t exclude_patterns <<<"${WATCH_EXCLUDE:-}"
 
 validate_boolean DRY_RUN || exit 1
 validate_boolean DELETE_AFTER_UPLOAD || exit 1
+validate_boolean IGNORE_EXISTING_FILES || exit 1
 
 # Check required environment variables
 if [ -z "$WATCH_DIR" ]; then
@@ -280,20 +282,30 @@ if [ "$DRY_RUN" = "true" ]; then
     log_warn "[DRY-RUN] Skipping cloud connection check"
 fi
 
-# Monitor directory with inotifywait
-inotifywait -m -r -e close_write,moved_to "$WATCH_DIR" --format '%w%f' |
-    while IFS= read -r filepath; do
-        # Check if it's a file (not directory)
-        if [ -f "$filepath" ] && matches_watch_filters "$filepath"; then
-            # Wait a bit to make sure file is fully written
-            if [ "$UPLOAD_DELAY" -gt 0 ]; then
-                sleep "$UPLOAD_DELAY"
+schedule_upload() {
+    local filepath="$1"
+    [[ -f "$filepath" ]] && matches_watch_filters "$filepath" || return 0
+
+    if [ "$UPLOAD_DELAY" -gt 0 ]; then
+        sleep "$UPLOAD_DELAY"
+    fi
+    wait_for_job_slot
+    upload_with_queue "$filepath" &
+}
+
+# Start watching before scanning so changes during the scan are queued by inotify.
+LC_ALL=C inotifywait -m -r -e close_write,moved_to "$WATCH_DIR" --format 'file:%w%f' 2>&1 |
+    while IFS= read -r line; do
+        case "$line" in
+        'Watches established.')
+            printf '%s\n' "$line" >&2
+            if [[ "$IGNORE_EXISTING_FILES" == false ]]; then
+                while IFS= read -r -d '' filepath; do
+                    [[ "$filepath" != *$'\n'* ]] && schedule_upload "$filepath"
+                done < <(find "${WATCH_DIR%/}/" -type f -print0)
             fi
-
-            # Wait for available job slot before starting upload
-            wait_for_job_slot
-
-            # Upload to cloud in background with parallel control
-            upload_with_queue "$filepath" &
-        fi
+            ;;
+        file:*) schedule_upload "${line#file:}" ;;
+        *) printf '%s\n' "$line" >&2 ;;
+        esac
     done

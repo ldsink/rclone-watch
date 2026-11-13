@@ -13,6 +13,8 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir "$watch_dir/nested"
+printf '%s\n' 'existing payload' >"$watch_dir/nested/existing file.txt"
+touch "$watch_dir/nested/existing.tmp.txt" "$watch_dir/nested/existing.log"
 docker run --detach --init --name "$container" \
     --mount "type=bind,src=$watch_dir,dst=/watch,readonly" \
     -e RCLONE_REMOTE=:local:/out -e S3_PREFIX=backup -e UPLOAD_DELAY=0 -e MAX_PARALLEL=1 \
@@ -33,5 +35,8 @@ timeout 30 bash -c '
     sleep 0.5
   done
 ' _ "$container"
+docker exec "$container" cmp '/watch/nested/existing file.txt' '/out/backup/nested/existing file.txt'
+docker exec "$container" test ! -e /out/backup/nested/existing.tmp.txt
+docker exec "$container" test ! -e /out/backup/nested/existing.log
 docker exec "$container" test ! -e /out/backup/nested/excluded.tmp.txt
 docker exec "$container" test ! -e /out/backup/nested/unmatched.log

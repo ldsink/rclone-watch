@@ -74,13 +74,14 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 | `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                |
 | `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-write in the container                                                                                    |
 | `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
+| `IGNORE_EXISTING_FILES`         | `false`                                          | Set to `true` to skip files already present at startup. Accepts `true` or `false`.                                                              |
 | `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                           |
 | `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                      |
 | `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
 | `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
 | `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
 | `S3_PREFIX`                     | Empty                                            | Optional relative directory prefix placed before the file path. Applies to any backend                                                          |
-| `UPLOAD_DELAY`                  | `5`                                              | Seconds to wait after each file event before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default  |
+| `UPLOAD_DELAY`                  | `5`                                              | Per-file delay before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default                         |
 | `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
 | `DRY_RUN`                       | `false`                                          | Accepts `true` or `false`. Set to `true` to log destination paths and file sizes without calling rclone.                                        |
 | `DELETE_AFTER_UPLOAD`           | `false`                                          | Supported since `v0.0.3`. Accepts `true` or `false`. Set to `true` to delete an unchanged local file after a verified upload.                   |
@@ -125,6 +126,7 @@ End a destination that includes a path with `/`. The watcher appends the optiona
 ```mermaid
 flowchart TD
     Event(["File write or move"]) --> Watch["inotify detects the event"]
+    Startup(["Startup scan unless IGNORE_EXISTING_FILES is true"]) --> Filters
     Watch --> Filters{"Passes the path filters?"}
     Filters -->|No| Skip(["Skip file"])
     Filters -->|Yes| Wait["Wait for the delay and an upload slot"]
@@ -145,7 +147,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-Existing files are skipped at startup. Local files stay in place by default. Use filenames without newlines.
+With the startup scan feature (unreleased), the watcher scans by default the directory and its subdirectories at every startup and processes existing files with the same filters and upload settings as file events. To keep the previous behavior, add `IGNORE_EXISTING_FILES=true` to `.env`. With `DELETE_AFTER_UPLOAD=true`, existing files are also eligible for deletion after a verified upload. Local files stay in place by default. Use filenames without newlines.
 
 <a name="troubleshooting"></a>
 
