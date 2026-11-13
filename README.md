@@ -18,14 +18,6 @@
 - **Upload controls** include a delay, a concurrency limit, retries, and dry-run mode.
 - **Storage backends** include S3, Backblaze B2, and Google Drive through rclone.
 
-## Delete after upload
-
-Set `DELETE_AFTER_UPLOAD=true` in `.env` and run `docker compose up -d` with an image that supports the setting. The Compose example mounts the watch directory read-write. The container needs permission to delete files from the host directory.
-
-After rclone transfers a file, the watcher reads back the destination object and compares its SHA-256 digest before deleting the source. The remote credentials need read access, and verification uses download bandwidth. Dry runs, skipped transfers, failed uploads and failed verification leave the source in place. Queue retries follow the same rules. If deletion fails, the watcher logs `Upload succeeded but local deletion failed` and treats the transfer as successful.
-
-Write files completely before handing them to the watcher and avoid reusing their paths during upload. The final source check and deletion are separate operations.
-
 <a name="quick-start"></a>
 
 ## 🚀 Quick start
@@ -79,21 +71,21 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 
 `RCLONE_WATCH_IMAGE` and `WATCH_PATH` configure Compose. The service loads runtime settings from `.env` and explicitly sets `WATCH_DIR=/watch`, which takes precedence over any `WATCH_DIR` in `.env`. When running the image directly, pass runtime settings with `-e` or `--env-file`.
 
-| Variable                        | Default                                          | Purpose                                                                                                                                         |
-| ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                |
-| `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-write in the container                                                                                    |
-| `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
-| `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                           |
-| `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                      |
-| `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
-| `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                     |
-| `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services |
-| `S3_PREFIX`                     | Empty                                            | Optional relative directory prefix placed before the file path. Applies to any backend                                                          |
-| `UPLOAD_DELAY`                  | `5`                                              | Seconds to wait after each file event before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default  |
-| `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
-| `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                       |
-| `DELETE_AFTER_UPLOAD`           | `false`                                          | Accepts `true` or `false`. Empty uses the default. See [Delete after upload](#delete-after-upload).                                             |
+| Variable                        | Default                                          | Purpose                                                                                                                                               |
+| ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                      |
+| `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-write in the container                                                                                          |
+| `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere                   |
+| `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                                 |
+| `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                            |
+| `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                                     |
+| `RCLONE_CONFIG_<NAME>_TYPE`     | Required for a remote defined in the environment | Remote type, such as `s3`, `b2`, or `drive`                                                                                                           |
+| `RCLONE_CONFIG_<NAME>_<OPTION>` | Depends on the backend                           | Backend options, such as S3's `PROVIDER`, `ENV_AUTH`, `ACCESS_KEY_ID`, `SECRET_ACCESS_KEY`, `REGION`, and `ENDPOINT` for S3-compatible services       |
+| `S3_PREFIX`                     | Empty                                            | Optional relative directory prefix placed before the file path. Applies to any backend                                                                |
+| `UPLOAD_DELAY`                  | `5`                                              | Seconds to wait after each file event before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default        |
+| `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                      |
+| `DRY_RUN`                       | `false`                                          | Only the literal `true` enables simulation. Logs destination paths and file sizes without invoking rclone                                             |
+| `DELETE_AFTER_UPLOAD`           | `false`                                          | Supported since `v0.0.3`. Set to `true` to delete an unchanged local file after a verified upload. Accepts `true` or `false`. Empty uses the default. |
 
 <a name="file-filters"></a>
 
