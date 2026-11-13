@@ -74,7 +74,6 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要运行的镜像及标签，可使用 GHCR 镜像或本地构建的镜像                                                                        |
 | `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以读写方式挂载到容器                                                                                        |
 | `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
-| `UPLOAD_EXISTING_FILES`         | `false`                    | 接受 `true` 或 `false`。设为 `true` 时上传启动时已有的文件。                                                                |
 | `WATCH_INCLUDE`                 | 空                         | 设置后，文件需命中至少一条包含规则。参见[文件过滤](#文件过滤)                                                               |
 | `WATCH_EXCLUDE`                 | 空                         | 跳过命中任意排除规则的文件。参见[文件过滤](#文件过滤)                                                                       |
 | `RCLONE_REMOTE`                 | 上传模式必填               | 目标路径的起点，例如 `myremote:` 或 `myremote:my-bucket/subfolder/`。模拟模式下未设置或为空时使用 `cloud/`                  |
@@ -84,6 +83,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `UPLOAD_DELAY`                  | `5`                        | 每个文件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                                 |
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
 | `DRY_RUN`                       | `false`                    | 接受 `true` 或 `false`。设为 `true` 时记录目标路径和文件大小，不调用 rclone。                                               |
+| `UPLOAD_EXISTING_FILES`         | `false`                    | 接受 `true` 或 `false`。设为 `true` 时上传启动时已有的文件。                                                                |
 | `DELETE_AFTER_UPLOAD`           | `false`                    | 自 `v0.0.3` 起支持。接受 `true` 或 `false`。设为 `true` 时，上传并校验成功后删除未变化的本地文件。                          |
 
 布尔参数未设置或留空时默认为 `false`。其他值只接受 `true` 或 `false`。

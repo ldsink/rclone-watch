@@ -74,7 +74,6 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 | `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                |
 | `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-write in the container                                                                                    |
 | `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
-| `UPLOAD_EXISTING_FILES`         | `false`                                          | Set to `true` to upload existing files at startup. Accepts `true` or `false`.                                                                   |
 | `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                           |
 | `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                      |
 | `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
@@ -84,6 +83,7 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 | `UPLOAD_DELAY`                  | `5`                                              | Per-file delay before scheduling an upload. Use `0` or a positive integer without leading zeros. Empty uses the default                         |
 | `MAX_PARALLEL`                  | `5`                                              | Maximum concurrent uploads. Use a positive integer without leading zeros. Empty uses the default                                                |
 | `DRY_RUN`                       | `false`                                          | Accepts `true` or `false`. Set to `true` to log destination paths and file sizes without calling rclone.                                        |
+| `UPLOAD_EXISTING_FILES`         | `false`                                          | Set to `true` to upload existing files at startup. Accepts `true` or `false`.                                                                   |
 | `DELETE_AFTER_UPLOAD`           | `false`                                          | Supported since `v0.0.3`. Accepts `true` or `false`. Set to `true` to delete an unchanged local file after a verified upload.                   |
 
 Unset or empty boolean settings default to `false`. Other values must be `true` or `false`.
