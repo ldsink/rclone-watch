@@ -31,7 +31,6 @@
 ```dotenv
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.4
 WATCH_PATH=/mnt/nas/uploads
-# IGNORE_EXISTING_FILES=true
 
 RCLONE_REMOTE=myremote:my-bucket/
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
@@ -75,7 +74,7 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `RCLONE_WATCH_IMAGE`            | 必填（Compose）            | 要运行的镜像及标签，可使用 GHCR 镜像或本地构建的镜像                                                                        |
 | `WATCH_PATH`                    | 必填（Compose）            | 宿主机监听目录，以读写方式挂载到容器                                                                                        |
 | `WATCH_DIR`                     | `/watch`                   | 容器内已存在的监听目录。直接运行镜像且挂载到其他路径时可覆盖                                                                |
-| `IGNORE_EXISTING_FILES`         | `false`                    | 接受 `true` 或 `false`。设为 `true` 时跳过启动时已有的文件。                                                                |
+| `UPLOAD_EXISTING_FILES`         | `false`                    | 接受 `true` 或 `false`。设为 `true` 时上传启动时已有的文件。                                                                |
 | `WATCH_INCLUDE`                 | 空                         | 设置后，文件需命中至少一条包含规则。参见[文件过滤](#文件过滤)                                                               |
 | `WATCH_EXCLUDE`                 | 空                         | 跳过命中任意排除规则的文件。参见[文件过滤](#文件过滤)                                                                       |
 | `RCLONE_REMOTE`                 | 上传模式必填               | 目标路径的起点，例如 `myremote:` 或 `myremote:my-bucket/subfolder/`。模拟模式下未设置或为空时使用 `cloud/`                  |
@@ -127,7 +126,7 @@ WATCH_EXCLUDE='archive/*
 ```mermaid
 flowchart TD
     Event(["文件写入完成或移入"]) --> Watch["inotify 捕捉事件"]
-    Startup(["启动扫描（IGNORE_EXISTING_FILES 为 true 时跳过）"]) --> Filters
+    Startup(["启动扫描（UPLOAD_EXISTING_FILES 为 true 时启用）"]) --> Filters
     Watch --> Filters{"通过路径筛选？"}
     Filters -->|否| Skip(["跳过文件"])
     Filters -->|是| Wait["等待上传延时和并发槽"]
@@ -148,7 +147,9 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-从 `v0.0.4` 起，监听器默认在每次启动时扫描监听目录及其子目录，并使用与文件事件相同的过滤规则和上传设置处理已有文件。如需保留旧版行为，请在 `.env` 中设置 `IGNORE_EXISTING_FILES=true`。若启用 `DELETE_AFTER_UPLOAD=true`，已有文件也可能在上传并验证成功后被删除。默认保留本地文件。路径含换行符的文件会被跳过。
+监听器默认跳过启动时已有的文件。设置 `UPLOAD_EXISTING_FILES=true` 后，每次启动都会扫描监听目录及其子目录，并按常规过滤规则和上传设置处理已有文件。同时启用启动上传和 `DELETE_AFTER_UPLOAD=true` 时，请在启动监听器前完成文件写入。路径含换行符的文件会被跳过。
+
+已发布的 `v0.0.4` 使用 `IGNORE_EXISTING_FILES=true` 跳过已有文件。如需使用 `UPLOAD_EXISTING_FILES`，请从当前源码构建镜像。
 
 <a name="故障排查"></a>
 

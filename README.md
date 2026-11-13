@@ -31,7 +31,6 @@ Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Creat
 ```dotenv
 RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.4
 WATCH_PATH=/mnt/nas/uploads
-# IGNORE_EXISTING_FILES=true
 
 RCLONE_REMOTE=myremote:my-bucket/
 RCLONE_CONFIG_MYREMOTE_TYPE=s3
@@ -75,7 +74,7 @@ When ready to upload, set `DRY_RUN=false`, fill in the remote settings, run `doc
 | `RCLONE_WATCH_IMAGE`            | Required by Compose                              | Image and tag to run, from GHCR or a local build                                                                                                |
 | `WATCH_PATH`                    | Required by Compose                              | Host directory to watch, mounted read-write in the container                                                                                    |
 | `WATCH_DIR`                     | `/watch`                                         | Existing directory to watch inside the container. Override it when running the image directly if the directory is mounted elsewhere             |
-| `IGNORE_EXISTING_FILES`         | `false`                                          | Set to `true` to skip files already present at startup. Accepts `true` or `false`.                                                              |
+| `UPLOAD_EXISTING_FILES`         | `false`                                          | Set to `true` to upload existing files at startup. Accepts `true` or `false`.                                                                   |
 | `WATCH_INCLUDE`                 | Empty                                            | Require an include match when set. See [File filters](#file-filters).                                                                           |
 | `WATCH_EXCLUDE`                 | Empty                                            | Skip any exclude match. See [File filters](#file-filters).                                                                                      |
 | `RCLONE_REMOTE`                 | Required for uploads                             | Destination base, such as `myremote:` or `myremote:my-bucket/subfolder/`. Dry runs use `cloud/` if unset or empty                               |
@@ -127,7 +126,7 @@ End a destination that includes a path with `/`. The watcher appends the optiona
 ```mermaid
 flowchart TD
     Event(["File write or move"]) --> Watch["inotify detects the event"]
-    Startup(["Startup scan unless IGNORE_EXISTING_FILES is true"]) --> Filters
+    Startup(["Startup scan when UPLOAD_EXISTING_FILES is true"]) --> Filters
     Watch --> Filters{"Passes the path filters?"}
     Filters -->|No| Skip(["Skip file"])
     Filters -->|Yes| Wait["Wait for the delay and an upload slot"]
@@ -148,7 +147,9 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-Starting with `v0.0.4`, the watcher scans the directory and its subdirectories at every startup by default and processes existing files with the same filters and upload settings as file events. To keep the previous behavior, add `IGNORE_EXISTING_FILES=true` to `.env`. With `DELETE_AFTER_UPLOAD=true`, existing files are also eligible for deletion after a verified upload. Local files stay in place by default. Files with newlines in their paths are skipped.
+The watcher skips existing files at startup by default. Set `UPLOAD_EXISTING_FILES=true` to scan the watch directory and its subdirectories on each startup and process existing files with the usual filters and upload settings. When using startup uploads with `DELETE_AFTER_UPLOAD=true`, finish writing files before starting the watcher. Files with newlines in their paths are skipped.
+
+The published `v0.0.4` release uses `IGNORE_EXISTING_FILES=true` to skip existing files. To use `UPLOAD_EXISTING_FILES`, build an image from the current source.
 
 <a name="troubleshooting"></a>
 

@@ -46,7 +46,7 @@ write_file() {
     printf '%s\n' payload >"$work/watch/$1"
 }
 
-start rw -e IGNORE_EXISTING_FILES=true
+start rw
 # An event filename must never be interpreted as an inotify startup message.
 write_file $'multiline\nWatches established.'
 write_file 'default.txt'
@@ -55,13 +55,13 @@ cmp "$work/watch/default.txt" "$work/out/target/backup/default.txt"
 test ! -e "$work/out/target/backup/existing.txt"
 test "$(docker logs "$container" 2>&1 | grep -cFx 'Watches established.')" -eq 1
 
-start rw -e DRY_RUN= -e DELETE_AFTER_UPLOAD= -e IGNORE_EXISTING_FILES=
-await logged 'Uploaded successfully: existing.txt'
+start rw -e DRY_RUN= -e DELETE_AFTER_UPLOAD= -e UPLOAD_EXISTING_FILES=
 write_file 'empty-settings.txt'
 await logged 'Uploaded successfully: empty-settings.txt'
 cmp "$work/watch/empty-settings.txt" "$work/out/target/backup/empty-settings.txt"
+test ! -e "$work/out/target/backup/existing.txt"
 
-start rw -e DRY_RUN=false -e DELETE_AFTER_UPLOAD=true
+start rw -e DRY_RUN=false -e DELETE_AFTER_UPLOAD=true -e UPLOAD_EXISTING_FILES=true
 await logged 'Deleted local file: /watch/existing.txt'
 test ! -e "$work/watch/existing.txt"
 test "$(cat "$work/out/target/backup/existing.txt")" = payload
@@ -90,7 +90,7 @@ await logged 'File from queue uploaded successfully: retry.txt'
 test ! -e "$work/watch/retry.txt"
 test "$(cat "$work/out/target/backup/retry.txt")" = payload
 
-start ro -e DELETE_AFTER_UPLOAD=true -e IGNORE_EXISTING_FILES=true
+start ro -e DELETE_AFTER_UPLOAD=true
 touch "$work/out/target"
 write_file 'readonly.txt'
 await logged 'File added to queue: readonly.txt'
@@ -104,7 +104,7 @@ await logged 'Uploaded successfully: queue-barrier.txt'
 docker exec "$container" test ! -s /tmp/upload_queue.txt
 
 for delete in true false; do
-    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e DRY_RUN=true -e RCLONE_REMOTE=
+    start rw -e "DELETE_AFTER_UPLOAD=$delete" -e DRY_RUN=true -e RCLONE_REMOTE= -e UPLOAD_EXISTING_FILES=true
     await logged '[DRY-RUN] Will be uploaded: existing.txt -> cloud/backup/existing.txt'
     write_file 'pending.tmp'
     await logged 'Simulation completed for: pending.tmp'
@@ -137,7 +137,7 @@ if [[ "$1" == copyto ]]; then
 fi
 WRAPPER
 chmod +x "$work/bin/rclone"
-start rw -e DELETE_AFTER_UPLOAD=true -e IGNORE_EXISTING_FILES=true -e WATCH_EXCLUDE='*.tmp' \
+start rw -e DELETE_AFTER_UPLOAD=true -e WATCH_EXCLUDE='*.tmp' \
     -e PATH=/test-bin:/usr/local/bin:/usr/bin:/bin -v "$work/bin:/test-bin:ro"
 write_file 'replaced.txt'
 await logged 'Waiting to finish copy'
@@ -147,7 +147,7 @@ docker exec "$container" bash -c 'mv /watch/replacement.tmp /watch/replaced.txt;
 await logged 'Keeping local file because the source changed or could not be checked: /watch/replaced.txt'
 test "$(cat "$work/watch/replaced.txt")" = replacement
 
-start rw -e DELETE_AFTER_UPLOAD=true -e IGNORE_EXISTING_FILES=true \
+start rw -e DELETE_AFTER_UPLOAD=true \
     -e PATH=/test-bin:/usr/local/bin:/usr/bin:/bin -v "$work/bin:/test-bin:ro"
 write_file 'unverified.txt'
 await logged 'Waiting to finish copy'
@@ -157,7 +157,7 @@ await logged 'Keeping local file because remote contents could not be verified: 
 test "$(cat "$work/watch/unverified.txt")" = payload
 
 docker rm -f "$container" >/dev/null
-for setting in DRY_RUN DELETE_AFTER_UPLOAD IGNORE_EXISTING_FILES; do
+for setting in DRY_RUN DELETE_AFTER_UPLOAD UPLOAD_EXISTING_FILES; do
     status=0
     timeout 10 docker run --rm --name "$container" -e "$setting=yes" "$image" >"$work/invalid.log" 2>&1 || status=$?
     test "$status" -eq 1

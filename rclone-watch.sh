@@ -32,14 +32,14 @@ S3_PREFIX="${S3_PREFIX:-}"
 UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
 DRY_RUN="${DRY_RUN:-false}"       # Test mode without real upload
 DELETE_AFTER_UPLOAD="${DELETE_AFTER_UPLOAD:-false}"
-IGNORE_EXISTING_FILES="${IGNORE_EXISTING_FILES:-false}"
+UPLOAD_EXISTING_FILES="${UPLOAD_EXISTING_FILES:-false}"
 MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
 mapfile -t include_patterns <<<"${WATCH_INCLUDE:-}"
 mapfile -t exclude_patterns <<<"${WATCH_EXCLUDE:-}"
 
 validate_boolean DRY_RUN || exit 1
 validate_boolean DELETE_AFTER_UPLOAD || exit 1
-validate_boolean IGNORE_EXISTING_FILES || exit 1
+validate_boolean UPLOAD_EXISTING_FILES || exit 1
 
 # Check required environment variables
 if [ -z "$WATCH_DIR" ]; then
@@ -300,7 +300,7 @@ LC_ALL=C inotifywait -m -r -e close_write,moved_to --exclude $'\n' --format 'fil
         case "$line" in
         'Watches established.')
             printf '%s\n' "$line" >&2
-            if [[ "$IGNORE_EXISTING_FILES" == false ]]; then
+            if [[ "$UPLOAD_EXISTING_FILES" == true ]]; then
                 while IFS= read -r -d '' filepath; do
                     [[ "$filepath" != *$'\n'* ]] && schedule_upload "$filepath"
                 done < <(find "${WATCH_DIR%/}/" -type f -print0)

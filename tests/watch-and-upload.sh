@@ -18,7 +18,7 @@ touch "$watch_dir/nested/existing.tmp.txt" "$watch_dir/nested/existing.log"
 docker run --detach --init --name "$container" \
     --mount "type=bind,src=$watch_dir,dst=/watch,readonly" \
     -e RCLONE_REMOTE=:local:/out -e S3_PREFIX=backup -e UPLOAD_DELAY=0 -e MAX_PARALLEL=1 \
-    -e WATCH_INCLUDE=$'*.txt\n*.csv' -e WATCH_EXCLUDE='*.tmp.txt' \
+    -e UPLOAD_EXISTING_FILES=true -e WATCH_INCLUDE=$'*.txt\n*.csv' -e WATCH_EXCLUDE='*.tmp.txt' \
     "$image"
 
 timeout 20 bash -c '
