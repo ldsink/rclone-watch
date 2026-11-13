@@ -22,14 +22,14 @@
 
 ## 🚀 Quick start
 
-This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.4` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
+This example uses the public `ghcr.io/ldsink/rclone-watch:v0.0.5` image. You need a `linux/amd64` host with Docker Compose. To limit which files are uploaded, configure [file filters](#file-filters) before starting.
 
 ### 1. Configure the watched directory and Amazon S3
 
 Download [compose.yaml](compose.yaml) and create an `.env` file beside it. Create the host directory specified by `WATCH_PATH` and replace the bucket, region, and credentials with your own values.
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.4
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.5
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -149,7 +149,7 @@ flowchart TD
 
 The watcher skips existing files at startup by default. Set `UPLOAD_EXISTING_FILES=true` to scan the watch directory and its subdirectories on each startup and process existing files with the usual filters and upload settings. The watcher also handles live file events while the scan is running. When using startup uploads with `DELETE_AFTER_UPLOAD=true`, finish writing files before starting the watcher. Files with newlines in their paths are skipped.
 
-The published `v0.0.4` release uses `IGNORE_EXISTING_FILES=true` to skip existing files. To use `UPLOAD_EXISTING_FILES`, build an image from the current source.
+Starting with `v0.0.5`, `UPLOAD_EXISTING_FILES` replaces `IGNORE_EXISTING_FILES`. When upgrading from `v0.0.4`, set `UPLOAD_EXISTING_FILES=true` if you want to keep scanning existing files at startup.
 
 <a name="troubleshooting"></a>
 
@@ -168,7 +168,7 @@ The published `v0.0.4` release uses `IGNORE_EXISTING_FILES=true` to skip existin
 The public image `ghcr.io/ldsink/rclone-watch` supports `linux/amd64`. [See published tags](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch).
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.4
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.5
 ```
 
 <a name="license"></a>

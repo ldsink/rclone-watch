@@ -22,14 +22,14 @@
 
 ## 🚀 快速开始
 
-以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.4`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
+以下示例使用公开镜像 `ghcr.io/ldsink/rclone-watch:v0.0.5`，需要 `linux/amd64` 宿主机和 Docker Compose。如需限制上传范围，请在启动前配置[文件过滤](#文件过滤)。
 
 ### 1. 配置监听目录和 Amazon S3
 
 下载 [compose.yaml](compose.yaml)，在同一目录创建 `.env`。提前创建 `WATCH_PATH` 指向的宿主机目录，并将存储桶、区域和凭据替换为实际值。
 
 ```dotenv
-RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.4
+RCLONE_WATCH_IMAGE=ghcr.io/ldsink/rclone-watch:v0.0.5
 WATCH_PATH=/mnt/nas/uploads
 
 RCLONE_REMOTE=myremote:my-bucket/
@@ -149,7 +149,7 @@ flowchart TD
 
 监听器默认跳过启动时已有的文件。设置 `UPLOAD_EXISTING_FILES=true` 后，每次启动都会扫描监听目录及其子目录，并按常规过滤规则和上传设置处理已有文件。扫描期间也会处理实时文件事件。同时启用启动上传和 `DELETE_AFTER_UPLOAD=true` 时，请在启动监听器前完成文件写入。路径含换行符的文件会被跳过。
 
-已发布的 `v0.0.4` 使用 `IGNORE_EXISTING_FILES=true` 跳过已有文件。如需使用 `UPLOAD_EXISTING_FILES`，请从当前源码构建镜像。
+从 `v0.0.5` 起，`UPLOAD_EXISTING_FILES` 取代 `IGNORE_EXISTING_FILES`。从 `v0.0.4` 升级时，如需继续在启动时扫描已有文件，请设置 `UPLOAD_EXISTING_FILES=true`。
 
 <a name="故障排查"></a>
 
@@ -168,7 +168,7 @@ flowchart TD
 公开镜像 `ghcr.io/ldsink/rclone-watch` 支持 `linux/amd64`，可直接拉取。[查看已发布标签](https://github.com/ldsink/rclone-watch/pkgs/container/rclone-watch)。
 
 ```sh
-docker pull ghcr.io/ldsink/rclone-watch:v0.0.4
+docker pull ghcr.io/ldsink/rclone-watch:v0.0.5
 ```
 
 <a name="许可证"></a>
