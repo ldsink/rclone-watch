@@ -50,7 +50,12 @@ write_file 'default.txt'
 await logged 'Uploaded successfully: default.txt'
 cmp "$work/watch/default.txt" "$work/out/target/backup/default.txt"
 
-start rw -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true
+start rw -e DRY_RUN= -e DELETE_AFTER_UPLOAD=
+write_file 'empty-settings.txt'
+await logged 'Uploaded successfully: empty-settings.txt'
+cmp "$work/watch/empty-settings.txt" "$work/out/target/backup/empty-settings.txt"
+
+start rw -e DRY_RUN=false -e DELETE_AFTER_UPLOAD=true -e RCLONE_IGNORE_EXISTING=true -e RCLONE_DRY_RUN=0
 printf '%s\n' payload >"$work/source"
 mv "$work/source" "$work/watch/file name.txt"
 await logged 'Deleted local file: /watch/file name.txt'
@@ -137,7 +142,10 @@ touch "$work/out/resume"
 await logged 'Keeping local file because remote contents could not be verified: /watch/unverified.txt'
 test "$(cat "$work/watch/unverified.txt")" = payload
 
-if docker run --rm -e DELETE_AFTER_UPLOAD=yes -e DRY_RUN=true "$image" >"$work/invalid.log" 2>&1; then
-    exit 1
-fi
-grep -F 'DELETE_AFTER_UPLOAD must be true or false' "$work/invalid.log"
+docker rm -f "$container" >/dev/null
+for setting in DRY_RUN DELETE_AFTER_UPLOAD; do
+    status=0
+    timeout 10 docker run --rm --name "$container" -e "$setting=yes" "$image" >"$work/invalid.log" 2>&1 || status=$?
+    test "$status" -eq 1
+    grep -F "$setting must be true or false" "$work/invalid.log"
+done

@@ -16,6 +16,17 @@ log_warn() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $1"
 }
 
+validate_boolean() {
+    local name="$1"
+    case "${!name}" in
+    true | false) return 0 ;;
+    *)
+        log_error "$name must be true or false"
+        return 1
+        ;;
+    esac
+}
+
 # Default settings (set early to use in checks)
 S3_PREFIX="${S3_PREFIX:-}"
 UPLOAD_DELAY="${UPLOAD_DELAY:-5}" # Delay before upload in seconds
@@ -24,6 +35,9 @@ DELETE_AFTER_UPLOAD="${DELETE_AFTER_UPLOAD:-false}"
 MAX_PARALLEL="${MAX_PARALLEL:-5}" # Maximum parallel uploads
 mapfile -t include_patterns <<<"${WATCH_INCLUDE:-}"
 mapfile -t exclude_patterns <<<"${WATCH_EXCLUDE:-}"
+
+validate_boolean DRY_RUN || exit 1
+validate_boolean DELETE_AFTER_UPLOAD || exit 1
 
 # Check required environment variables
 if [ -z "$WATCH_DIR" ]; then
@@ -47,11 +61,6 @@ fi
 
 if ! [[ "$UPLOAD_DELAY" =~ ^(0|[1-9][0-9]*)$ && "$MAX_PARALLEL" =~ ^[1-9][0-9]*$ ]]; then
     log_error "UPLOAD_DELAY must be a nonnegative integer and MAX_PARALLEL a positive integer"
-    exit 1
-fi
-
-if [[ "$DELETE_AFTER_UPLOAD" != true && "$DELETE_AFTER_UPLOAD" != false ]]; then
-    log_error "DELETE_AFTER_UPLOAD must be true or false"
     exit 1
 fi
 
@@ -228,9 +237,14 @@ upload_file() {
         return 9
     fi
     [[ "$status" == 0 ]] || return 1
-    if [[ "$DELETE_AFTER_UPLOAD" == true && "${RCLONE_DRY_RUN:-false}" != false ]]; then
-        log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
-        return 9
+    if [[ "$DELETE_AFTER_UPLOAD" == true ]]; then
+        case "${RCLONE_DRY_RUN:-false}" in
+        0 | f | F | false | False | FALSE) ;;
+        *)
+            log_warn "Keeping local file because RCLONE_DRY_RUN is set: $filepath"
+            return 9
+            ;;
+        esac
     fi
 
     log "Uploaded successfully: $filename"

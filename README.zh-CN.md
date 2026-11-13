@@ -84,8 +84,10 @@ printf '%s\n' 'rclone-watch test' > "/mnt/nas/uploads/rclone-watch-test-$(date +
 | `S3_PREFIX`                     | 空                         | 可选的相对目录前缀，插在文件相对路径之前，适用于所有后端                                                                    |
 | `UPLOAD_DELAY`                  | `5`                        | 每个文件事件在安排上传前等待的秒数。接受 `0` 或无前导零的正整数，留空使用默认值                                             |
 | `MAX_PARALLEL`                  | `5`                        | 并发上传任务上限。接受无前导零的正整数，留空使用默认值                                                                      |
-| `DRY_RUN`                       | `false`                    | 仅字面值 `true` 启用模拟。记录目标路径和文件大小，不调用 rclone                                                             |
-| `DELETE_AFTER_UPLOAD`           | `false`                    | 自 `v0.0.3` 起支持。设为 `true` 时，上传并校验成功后删除未变化的本地文件。接受 `true` 或 `false`，留空使用默认值。          |
+| `DRY_RUN`                       | `false`                    | 接受 `true` 或 `false`。设为 `true` 时记录目标路径和文件大小，不调用 rclone。                                               |
+| `DELETE_AFTER_UPLOAD`           | `false`                    | 自 `v0.0.3` 起支持。接受 `true` 或 `false`。设为 `true` 时，上传并校验成功后删除未变化的本地文件。                          |
+
+布尔参数未设置或留空时默认为 `false`。其他值只接受 `true` 或 `false`。
 
 <a name="文件过滤"></a>
 
