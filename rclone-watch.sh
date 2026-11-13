@@ -282,7 +282,7 @@ if [ "$DRY_RUN" = "true" ]; then
     log_warn "[DRY-RUN] Skipping cloud connection check"
 fi
 
-declare -A startup_file_states startup_upload_pids
+declare -A startup_file_states startup_upload_pids scan_event_states
 
 schedule_upload() {
     local filepath="$1" source="${2:-event}" state
@@ -296,14 +296,17 @@ schedule_upload() {
         unset 'startup_file_states[$filepath]' 'startup_upload_pids[$filepath]'
     fi
 
-    if [ "$UPLOAD_DELAY" -gt 0 ]; then
+    if [[ "$source" == event && "$UPLOAD_DELAY" -gt 0 ]]; then
         sleep "$UPLOAD_DELAY"
     fi
     wait_for_job_slot
     [[ -f "$filepath" ]] || return 0
     if [[ "$source" == startup ]]; then
         state=$(stat -Lc '%d:%i:%s:%y:%z' -- "$filepath" 2>/dev/null)
+        [[ -n "$state" && "$state" == "${scan_event_states[$filepath]:-}" ]] && return 0
         startup_file_states[$filepath]="$state"
+    elif [[ -n "${scan_fd:-}" ]]; then
+        scan_event_states[$filepath]=$(stat -Lc '%d:%i:%s:%y:%z' -- "$filepath" 2>/dev/null)
     fi
     upload_with_queue "$filepath" &
     if [[ "$source" == startup ]]; then
@@ -311,23 +314,48 @@ schedule_upload() {
     fi
 }
 
-# Start watching before scanning so changes during the scan are queued by inotify.
-LC_ALL=C inotifywait -m -r -e close_write,moved_to --exclude $'\n' --format 'file:%w%f' "$WATCH_DIR" 2>&1 |
-    while IFS= read -r line; do
-        case "$line" in
-        'Watches established.')
-            printf '%s\n' "$line" >&2
-            if [[ "$UPLOAD_EXISTING_FILES" == true ]]; then
-                exec {scan_fd}< <(find "${WATCH_DIR%/}/" -type f -print0)
-                scan_pid=$!
-                while IFS= read -r -d '' filepath; do
-                    [[ "$filepath" != *$'\n'* ]] && schedule_upload "$filepath" startup
-                done <&"$scan_fd"
-                exec {scan_fd}<&-
-                wait "$scan_pid" || log_error "Startup scan failed for $WATCH_DIR"
+scan_existing_files() {
+    local filepath
+    find "${WATCH_DIR%/}/" -type f -print0 |
+        while IFS= read -r -d '' filepath; do
+            [[ "$filepath" != *$'\n'* ]] && matches_watch_filters "$filepath" || continue
+            if [[ "$UPLOAD_DELAY" -gt 0 ]]; then
+                sleep "$UPLOAD_DELAY"
             fi
-            ;;
-        file:*) schedule_upload "${line#file:}" ;;
-        *) printf '%s\n' "$line" >&2 ;;
-        esac
+            printf '%s\0' "$filepath"
+        done
+}
+
+# Read watch events while the scan enumerates and delays existing files independently.
+LC_ALL=C inotifywait -m -r -e close_write,moved_to --exclude $'\n' --format 'file:%w%f' "$WATCH_DIR" 2>&1 |
+    while :; do
+        if [[ -z "${scan_fd:-}" ]] || IFS= read -r -t 0; then
+            IFS= read -r line || break
+            case "$line" in
+            'Watches established.')
+                printf '%s\n' "$line" >&2
+                if [[ "$UPLOAD_EXISTING_FILES" == true ]]; then
+                    exec {scan_fd}< <(scan_existing_files)
+                    scan_pid=$!
+                fi
+                ;;
+            file:*) schedule_upload "${line#file:}" ;;
+            *) printf '%s\n' "$line" >&2 ;;
+            esac
+        fi
+
+        if [[ -n "${scan_fd:-}" ]]; then
+            if IFS= read -r -t 0 -u "$scan_fd" && [[ "$(jobs -r | wc -l)" -lt "$MAX_PARALLEL" ]]; then
+                if IFS= read -r -d '' -u "$scan_fd" filepath; then
+                    schedule_upload "$filepath" startup
+                else
+                    exec {scan_fd}<&-
+                    unset scan_fd
+                    scan_event_states=()
+                    wait "$scan_pid" || log_error "Startup scan failed for $WATCH_DIR"
+                fi
+            elif ! IFS= read -r -t 0; then
+                sleep 0.05
+            fi
+        fi
     done

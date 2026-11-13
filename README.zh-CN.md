@@ -147,7 +147,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-监听器默认跳过启动时已有的文件。设置 `UPLOAD_EXISTING_FILES=true` 后，每次启动都会扫描监听目录及其子目录，并按常规过滤规则和上传设置处理已有文件。同时启用启动上传和 `DELETE_AFTER_UPLOAD=true` 时，请在启动监听器前完成文件写入。路径含换行符的文件会被跳过。
+监听器默认跳过启动时已有的文件。设置 `UPLOAD_EXISTING_FILES=true` 后，每次启动都会扫描监听目录及其子目录，并按常规过滤规则和上传设置处理已有文件。扫描期间也会处理实时文件事件。同时启用启动上传和 `DELETE_AFTER_UPLOAD=true` 时，请在启动监听器前完成文件写入。路径含换行符的文件会被跳过。
 
 已发布的 `v0.0.4` 使用 `IGNORE_EXISTING_FILES=true` 跳过已有文件。如需使用 `UPLOAD_EXISTING_FILES`，请从当前源码构建镜像。
 

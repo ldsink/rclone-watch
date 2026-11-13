@@ -31,22 +31,26 @@ touch "$watch_dir/nested/excluded.tmp.txt" "$watch_dir/nested/unmatched.log"
 printf '%s\n' 'test payload' >"$watch_dir/nested/file name.csv"
 timeout 30 bash -c '
   until docker exec "$1" cmp -s \
-    "/watch/nested/file name.csv" "/out/backup/nested/file name.csv"; do
+    "/watch/nested/file name.csv" "/out/backup/nested/file name.csv" &&
+    docker exec "$1" cmp -s \
+    "/watch/nested/existing file.txt" "/out/backup/nested/existing file.txt"; do
     sleep 0.5
   done
 ' _ "$container"
-docker exec "$container" cmp '/watch/nested/existing file.txt' '/out/backup/nested/existing file.txt'
 docker exec "$container" test ! -e /out/backup/nested/existing.tmp.txt
 docker exec "$container" test ! -e /out/backup/nested/existing.log
 docker exec "$container" test ! -e /out/backup/nested/excluded.tmp.txt
 docker exec "$container" test ! -e /out/backup/nested/unmatched.log
 
 docker rm -f "$container" >/dev/null
-# Change an existing file after watches are ready but before the scanner lists it.
+# Hold the scan open while a live write is processed.
 mkdir "$watch_dir/test-bin"
 cat >"$watch_dir/test-bin/find" <<'WRAPPER'
 #!/bin/sh
 printf '%s\n' 'changed during scan' >/watch/during-scan.txt
+while [ ! -e /watch/release-scan ]; do
+    sleep 0.1
+done
 printf '%s\0' /watch/during-scan.txt
 exit 1
 WRAPPER
@@ -55,7 +59,8 @@ printf '%s\n' 'initial contents' >"$watch_dir/during-scan.txt"
 docker run --detach --init --name "$container" \
     --mount "type=bind,src=$watch_dir,dst=/watch" \
     -e PATH=/watch/test-bin:/usr/local/bin:/usr/bin:/bin \
-    -e DRY_RUN=true -e UPLOAD_EXISTING_FILES=true -e UPLOAD_DELAY=0 -e MAX_PARALLEL=1 \
+    -e DRY_RUN=true -e UPLOAD_EXISTING_FILES=true -e UPLOAD_DELAY=1 -e MAX_PARALLEL=1 \
+    -e WATCH_INCLUDE='*.txt' \
     "$image"
 
 await_log() {
@@ -66,6 +71,8 @@ await_log() {
     ' _ "$container" "$1"
 }
 
+await_log 'Simulation completed for: during-scan.txt'
+touch "$watch_dir/release-scan"
 await_log 'ERROR: Startup scan failed for /watch'
 printf '%s\n' barrier >"$watch_dir/barrier.txt"
 await_log 'Simulation completed for: barrier.txt'

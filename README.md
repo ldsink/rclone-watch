@@ -147,7 +147,7 @@ flowchart TD
     class Queue,Retry retry
 ```
 
-The watcher skips existing files at startup by default. Set `UPLOAD_EXISTING_FILES=true` to scan the watch directory and its subdirectories on each startup and process existing files with the usual filters and upload settings. When using startup uploads with `DELETE_AFTER_UPLOAD=true`, finish writing files before starting the watcher. Files with newlines in their paths are skipped.
+The watcher skips existing files at startup by default. Set `UPLOAD_EXISTING_FILES=true` to scan the watch directory and its subdirectories on each startup and process existing files with the usual filters and upload settings. The watcher also handles live file events while the scan is running. When using startup uploads with `DELETE_AFTER_UPLOAD=true`, finish writing files before starting the watcher. Files with newlines in their paths are skipped.
 
 The published `v0.0.4` release uses `IGNORE_EXISTING_FILES=true` to skip existing files. To use `UPLOAD_EXISTING_FILES`, build an image from the current source.
 
